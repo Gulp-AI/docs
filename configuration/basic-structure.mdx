@@ -56,50 +56,41 @@ checkpointing:
 ## Sources and Sinks
 
 <Note>
-  Sources and sinks are required components in every Gulp Planner job configuration.
+Sources and sinks are required components in every Gulp Planner job configuration. For detailed configuration options and examples, refer to:
+- [Sources and Sinks Overview](/configuration/connectors)
+- [AWS Integration](/cloud-connectors/aws)
+- [GCP Integration](/cloud-connectors/gcp)
 </Note>
 
-### Source Configuration
+### Basic Structure
+
+Sources and sinks follow this basic structure:
+
 ```yaml
 sources:
-  - id: rawData              # Required: Unique source ID
-    name: "Raw Data Source"  # Optional: Descriptive name
-    type: kafka             # Required: Source type
-    sourceSchema:           # Required: Data schema
+  - id: mySource            # Required: Unique source ID
+    name: "My Source"       # Optional: Descriptive name
+    type: "service-type"    # Required: Source type (e.g., kafka, kinesis)
+    config:                 # Required: Service-specific configuration
+      # Configuration details in cloud connector documentation
+    schema:                 # Required: Data schema
       type: "object"
       properties:
-        id:
-          type: "long"
-        value:
-          type: "double"
-        timestamp:
-          type: "long"
-        category:
-          type: "string"
-        metadata:
-          type: "object"
-          properties:
-            region:
-              type: "string"
-            tags:
-              type: "array"
-              items:
-                type: "string"
-```
+        # Schema definition
 
-### Sink Configuration
-```yaml
 sinks:
-  - id: processedData
-    name: "Processed Data Sink"
-    type: kafka
-    input: transformedStream    # ID of source or transformation
+  - id: mySink             # Required: Unique sink ID
+    name: "My Sink"        # Optional: Descriptive name
+    type: "service-type"   # Required: Sink type
+    input: mySource        # Required: Input stream ID
+    config:                # Required: Service-specific configuration
+      # Configuration details in cloud connector documentation
 ```
 
 ## Transformations
 
 <Note>
-  Transformations are optional components that allow you to process and modify your data stream.
+Transformations are optional components that allow you to process and modify your data stream.
 </Note>
 
 ```yaml
@@ -169,73 +160,4 @@ maxItems: 10        # Optional: maximum items
 type: "object"
 additionalProperties:
   type: "string"    # Type of map values
-```
-
-## Sink Configuration Examples
-
-<Note>
-  These are required configurations for specific sink types.
-</Note>
-
-### MSK (Amazon Managed Streaming for Kafka)
-```yaml
-sinks:
-  - id: mskSink
-    name: "MSK Analytics Output"
-    type: kafka
-    input: transformedStream
-    config:
-      # MSK Connection
-      bootstrapServers: "${MSK_BOOTSTRAP_SERVERS}"
-      topic: "analytics-output"
-      securityProtocol: "SASL_SSL"
-      saslMechanism: "AWS_MSK_IAM"
-      
-      # Producer Configuration
-      deliveryGuarantee: "exactly_once"  # exactly_once, at_least_once
-      transactionTimeoutMs: 900000       # 15 minutes
-      batchSize: 16384                   # Size in bytes
-      linger.ms: 50                      # Artificial delay for batching
-      compression.type: "snappy"         # none, gzip, snappy, lz4, zstd
-      
-      # Performance Tuning
-      maxRequestSize: 1048576           # 1MB
-      bufferMemory: 33554432            # 32MB
-      maxBlockMs: 60000                 # 1 minute
-      retries: 3
-      
-      # Schema Configuration
-      keySerializationSchema:
-        type: "string"                  # Key serialization type
-        fields: ["category"]            # Fields to use as key
-      valueSerializationSchema:
-        type: "json"                    # json, avro, protobuf
-        includeFields: ["timestamp", "value", "metadata"]
-```
-
-### Elasticsearch
-```yaml
-sinks:
-  - id: elasticSink
-    name: "Elasticsearch Metrics"
-    type: elasticsearch
-    input: aggregatedMetrics
-    config:
-      hosts: ["https://vpc-es-domain.region.es.amazonaws.com"]
-      index: "metrics-#{date:YYYY.MM.dd}"  # Dynamic index naming
-      documentType: "_doc"
-      bulkFlushMaxActions: 1000
-      bulkFlushMaxSizeBytes: "5mb"
-      bulkFlushInterval: 1000              # milliseconds
-      retries: 3
-      failureHandler: "retry"              # retry, ignore, fail
-      
-      # Schema Configuration
-      documentIdField: "id"                # Field to use as document ID
-      routing:
-        field: "category"                  # Elasticsearch routing field
-        
-      # Connection Settings
-      connectionPathPrefix: "/analytics"
-      connectionRequestTimeout: 5000
 ``` 

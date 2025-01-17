@@ -33,7 +33,7 @@
       ]
     },
     {
-      "group": "Cloud Connectors",
+      "group": "Sources and Sinks",
       "pages": [
         "cloud-connectors/aws",
         "cloud-connectors/gcp"
