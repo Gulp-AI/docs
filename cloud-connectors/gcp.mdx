@@ -1,217 +1,239 @@
 ---
-title: 'GCP Integration'
-description: 'Learn how to integrate Gulp Planner with Google Cloud Platform services'
+title: "GCP Integration"
+description: "Configure GCP sources and sinks in Gulp"
 ---
 
-# Google Cloud Platform Integration
+# GCP Integration
 
-Gulp Planner provides seamless integration with Google Cloud Platform (GCP) services for both source and sink configurations.
+Gulp provides native integration with Google Cloud Platform (GCP) services for both sources and sinks. When running in GCP environments, authentication is handled automatically through service accounts.
 
-## Google Cloud Pub/Sub
+## Sources
 
-### Pub/Sub Source
+### Google Cloud Storage (GCS)
 
-<CodeGroup>
-```yaml Source Configuration
-sources:
-  - id: "pubsub-input"
-    type: "pubsub"
-    config:
-      projectId: "my-project"
-      subscriptionName: "my-subscription"
-      # Optional configurations
-      maxOutstandingMessages: 1000
-      maxOutstandingBytes: 1000000000
-      pullInterval: 100
-      credentials:
-        type: "service_account"
-        path: "/path/to/credentials.json"
-        # Or use JSON directly
-        json: ${GOOGLE_CREDENTIALS_JSON}
-    schema:
-      timestamp: "java.lang.Long"
-      payload: "java.lang.String"
-      attributes:
-        user_id: "java.lang.String"
-        event_type: "java.lang.String"
+```yaml
+source:
+  type: "gcs"
+  config:
+    bucket: "my-data-bucket"
+    path: "input/data/*.parquet"
+    format: "parquet"  # parquet, json, csv, avro
+    maxConcurrentRequests: 10
+    monitoring:
+      enabled: true
+      metrics: ["latency", "throughput", "errors"]
+    checkpointing:
+      enabled: true
+      interval: "1m"
 ```
-</CodeGroup>
 
-### Pub/Sub Sink
+### Google Cloud Pub/Sub
 
-<CodeGroup>
-```yaml Sink Configuration
-sinks:
-  - id: "pubsub-output"
-    type: "pubsub"
-    input: "transform-1"
-    config:
-      projectId: "my-project"
-      topicName: "my-topic"
-      # Optional configurations
-      batchSize: 100
-      requestBytesThreshold: 1000000
-      delayThreshold: 100
-      retrySettings:
-        initialRetryDelay: 100
-        retryDelayMultiplier: 1.3
-        maxRetryDelay: 60000
-        initialRpcTimeout: 5000
-        maxRpcTimeout: 600000
-      credentials:
-        type: "service_account"
-        path: "/path/to/credentials.json"
+```yaml
+source:
+  type: "pubsub"
+  config:
+    subscription: "projects/my-project/subscriptions/my-subscription"
+    maxOutstandingMessages: 1000
+    maxOutstandingBytes: "1gb"
+    monitoring:
+      enabled: true
+      metrics: ["latency", "throughput", "errors"]
+    watermark:
+      timestampField: "event_time"
+      maxOutOfOrderness: "5s"
 ```
-</CodeGroup>
 
-## Google BigQuery
+### BigQuery
 
-### BigQuery Source
-
-<CodeGroup>
-```yaml Source Configuration
-sources:
-  - id: "bigquery-input"
-    type: "bigquery"
-    config:
-      projectId: "my-project"
-      dataset: "my_dataset"
-      table: "my_table"
-      # Query-based configuration
-      query: "SELECT * FROM `my_project.my_dataset.my_table` WHERE timestamp > @startTime"
-      queryParameters:
-        startTime:
-          type: "TIMESTAMP"
-          value: "2024-01-01T00:00:00Z"
-      # Optional configurations
-      fetchSize: 1000
-      credentials:
-        type: "service_account"
-        path: "/path/to/credentials.json"
-    schema:
-      id: "java.lang.String"
-      timestamp: "java.lang.Long"
-      value: "java.lang.Double"
+```yaml
+source:
+  type: "bigquery"
+  config:
+    project: "my-project"
+    dataset: "my_dataset"
+    table: "my_table"
+    viewMaterializationProject: "my-project"  # For views
+    viewMaterializationDataset: "temp_dataset"
+    parallelism: 10
+    monitoring:
+      enabled: true
+      metrics: ["latency", "throughput", "errors"]
 ```
-</CodeGroup>
 
-### BigQuery Sink
+### Cloud Spanner
 
-<CodeGroup>
-```yaml Sink Configuration
-sinks:
-  - id: "bigquery-output"
-    type: "bigquery"
-    input: "transform-1"
-    config:
-      projectId: "my-project"
-      dataset: "my_dataset"
-      table: "my_table"
-      # Optional configurations
-      createDisposition: "CREATE_IF_NEEDED"
-      writeDisposition: "WRITE_APPEND"
-      batchSize: 1000
-      retrySettings:
-        maxAttempts: 3
-        initialRetryDelay: 1000
-      credentials:
-        type: "service_account"
-        path: "/path/to/credentials.json"
+```yaml
+source:
+  type: "spanner"
+  config:
+    instance: "my-instance"
+    database: "my-database"
+    table: "my-table"
+    project: "my-project"
+    parallelism: 10
+    monitoring:
+      enabled: true
+      metrics: ["latency", "throughput", "errors"]
 ```
-</CodeGroup>
 
-## Google Cloud Storage
+## Sinks
 
-### Cloud Storage Source
+### Google Cloud Storage (GCS)
 
-<CodeGroup>
-```yaml Source Configuration
-sources:
-  - id: "gcs-input"
-    type: "gcs"
-    config:
-      bucket: "my-bucket"
-      path: "input/data/"
-      # File format configuration
-      format: "parquet"  # json, csv, parquet, avro
-      # Optional configurations
-      watchInterval: 60000  # Milliseconds
-      filePattern: "*.parquet"
-      credentials:
-        type: "service_account"
-        path: "/path/to/credentials.json"
-    schema:
-      timestamp: "java.lang.Long"
-      value: "java.lang.Double"
+```yaml
+sink:
+  type: "gcs"
+  config:
+    bucket: "my-output-bucket"
+    path: "output/data"
+    format: "parquet"
+    partitioning:
+      - field: "year"
+        extractFromTimestamp: "event_time"
+      - field: "month"
+        extractFromTimestamp: "event_time"
+    compression: "snappy"
+    maxFileSize: "128mb"
+    inactivityInterval: "5m"
 ```
-</CodeGroup>
 
-### Cloud Storage Sink
+### Google Cloud Pub/Sub
+
+```yaml
+sink:
+  type: "pubsub"
+  config:
+    topic: "projects/my-project/topics/my-topic"
+    batchSize: 100
+    maxBatchSize: "1mb"
+    maxBatchDuration: "500ms"
+    orderingKey: "user_id"  # For ordered delivery
+    monitoring:
+      enabled: true
+      metrics: ["latency", "throughput", "errors"]
+```
+
+### BigQuery
+
+```yaml
+sink:
+  type: "bigquery"
+  config:
+    project: "my-project"
+    dataset: "my_dataset"
+    table: "my_table"
+    createDisposition: "CREATE_IF_NEEDED"
+    writeDisposition: "WRITE_APPEND"
+    partitioning:
+      type: "time"
+      field: "event_time"
+      expirationMs: 2592000000  # 30 days
+    clustering:
+      fields: ["user_id", "event_type"]
+    monitoring:
+      enabled: true
+      metrics: ["latency", "throughput", "errors"]
+```
+
+### Cloud Spanner
+
+```yaml
+sink:
+  type: "spanner"
+  config:
+    instance: "my-instance"
+    database: "my-database"
+    table: "my-table"
+    project: "my-project"
+    batchSize: 1000
+    commitDeadline: "10s"
+    maxCommitDelay: "500ms"
+    monitoring:
+      enabled: true
+      metrics: ["latency", "throughput", "errors"]
+```
+
+## Authentication
+
+When running in GCP environments, authentication is handled automatically through service accounts. No explicit credentials need to be specified in the YAML configuration.
+
+### Required IAM Roles
+
+Each service requires specific IAM roles. Here are the common ones:
 
 <CodeGroup>
-```yaml Sink Configuration
-sinks:
-  - id: "gcs-output"
-    type: "gcs"
-    input: "transform-1"
-    config:
-      bucket: "my-bucket"
-      path: "output/data/"
-      # File format configuration
-      format: "parquet"  # json, csv, parquet, avro
-      # Optional configurations
-      partitionFields: ["year", "month", "day"]
-      rolloverSize: 128000000  # Bytes
-      rolloverInterval: 60000  # Milliseconds
-      compression: "gzip"  # none, gzip, snappy
-      credentials:
-        type: "service_account"
-        path: "/path/to/credentials.json"
+```yaml Cloud Storage
+roles:
+  - roles/storage.objectViewer     # For sources
+  - roles/storage.objectCreator    # For sinks
+```
+
+```yaml Pub/Sub
+roles:
+  - roles/pubsub.subscriber       # For sources
+  - roles/pubsub.publisher       # For sinks
+```
+
+```yaml BigQuery
+roles:
+  - roles/bigquery.dataViewer    # For sources
+  - roles/bigquery.dataEditor    # For sinks
+```
+
+```yaml Cloud Spanner
+roles:
+  - roles/spanner.databaseReader  # For sources
+  - roles/spanner.databaseUser    # For sinks
 ```
 </CodeGroup>
 
 ## Best Practices
 
-<AccordionGroup>
-  <Accordion title="Authentication">
-    - Use service accounts with minimal required permissions
-    - Rotate service account keys regularly
-    - Store credentials securely using secret management solutions
-    - Use Workload Identity when running in GKE
-  </Accordion>
+1. **Service Accounts**: Use dedicated service accounts with minimal permissions
+2. **VPC Service Controls**: Implement for enhanced security
+3. **Batching**: Configure appropriate batch sizes for optimal performance
+4. **Monitoring**: Enable Cloud Monitoring integration for all connectors
+5. **Cost Optimization**: Use appropriate partitioning and clustering
 
-  <Accordion title="Performance Optimization">
-    - Configure appropriate batch sizes for Pub/Sub and BigQuery
-    - Use partitioning in BigQuery for better query performance
-    - Enable compression for Cloud Storage sinks
-    - Monitor and adjust buffer sizes based on throughput
-  </Accordion>
+## Error Handling
 
-  <Accordion title="Cost Optimization">
-    - Use streaming inserts for BigQuery only when necessary
-    - Configure appropriate retention policies for Pub/Sub
-    - Use Cloud Storage lifecycle policies
-    - Monitor data transfer and API usage costs
-  </Accordion>
+All GCP connectors support consistent error handling configuration:
 
-  <Accordion title="Error Handling">
-    - Configure retry policies for transient failures
-    - Use dead letter topics in Pub/Sub
-    - Monitor quota usage and limits
-    - Implement appropriate error handling for BigQuery streaming errors
-  </Accordion>
+```yaml
+errorHandling:
+  retries:
+    maxAttempts: 3
+    backoffPeriod: "1s"
+    maxBackoffPeriod: "1m"
+    multiplier: 2.0
+  deadLetter:
+    enabled: true
+    destination: "gs://my-bucket/dead-letter"
+```
 
-  <Accordion title="Monitoring">
-    - Set up Cloud Monitoring metrics and alerts
-    - Monitor Pub/Sub subscription backlog
-    - Track BigQuery slot utilization
-    - Monitor Cloud Storage object lifecycle
-  </Accordion>
+## Monitoring
 
-  <Accordion title="Schema Evolution">
-    - Use schema evolution features in BigQuery
-    - Plan for backward compatibility
-    - Test schema changes before deployment
-    - Document schema versioning strategy
-  </Accordion>
-</AccordionGroup> 
+Enable detailed monitoring with Cloud Monitoring integration:
+
+```yaml
+monitoring:
+  metrics:
+    - name: "throughput"
+      interval: "1m"
+    - name: "latency"
+      interval: "1m"
+    - name: "errors"
+      interval: "1m"
+  alerts:
+    - name: "HighLatency"
+      threshold: "5s"
+      duration: "5m"
+    - name: "HighErrorRate"
+      threshold: 0.01
+      duration: "5m"
+```
+
+<Note>
+For production deployments, it's recommended to enable monitoring and configure appropriate alerts.
+</Note> 

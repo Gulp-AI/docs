@@ -1,310 +1,128 @@
 ---
 title: "Sources and Sinks"
-description: "Configure data sources and sinks for your Gulp jobs"
+description: "Overview of data sources and sinks in Gulp"
 ---
 
 # Sources and Sinks
 
 Gulp supports a variety of cloud-native sources and sinks, with built-in optimizations and best practices for each service.
 
-## AWS Sources
+## Overview
 
-### Amazon S3
-
-```yaml
-source:
-  type: "s3"
-  config:
-    bucket: "my-data-bucket"
-    path: "input/data/*.parquet"
-    format: "parquet"  # parquet, json, csv, avro
-    region: "us-west-2"
-    maxConcurrentRequests: 10
-    monitoring:
-      enabled: true
-      metrics: ["latency", "throughput", "errors"]
-    checkpointing:
-      enabled: true
-      interval: "1m"
-```
-
-### Amazon Kinesis
+Sources and sinks in Gulp are configured using a consistent YAML structure:
 
 ```yaml
 source:
-  type: "kinesis"
+  type: "service-type"
   config:
-    stream: "my-data-stream"
-    region: "us-west-2"
-    initialPosition: "LATEST"  # LATEST, TRIM_HORIZON, AT_TIMESTAMP
-    enhancedFanOut: true
-    monitoring:
-      enabled: true
-      metrics: ["latency", "throughput", "errors"]
-    watermark:
-      timestampField: "event_time"
-      maxOutOfOrderness: "5s"
+    # Service-specific configuration
+    
+sink:
+  type: "service-type"
+  config:
+    # Service-specific configuration
 ```
 
-### Amazon MSK (Managed Streaming for Kafka)
+## Supported Services
+
+### AWS Services
+For detailed AWS service configurations, see [AWS Integration](/cloud-connectors/aws):
+
+- **Sources**
+  - Amazon Kinesis
+  - Amazon MSK (Managed Streaming for Kafka)
+  - Amazon S3
+  - Amazon DynamoDB Streams
+  - Amazon Redshift
+
+- **Sinks**
+  - Amazon Kinesis
+  - Amazon MSK
+  - Amazon S3
+  - Amazon Redshift
+  - Amazon OpenSearch
+
+### GCP Services
+For detailed GCP service configurations, see [GCP Integration](/cloud-connectors/gcp):
+
+- **Sources**
+  - Google Cloud Storage (GCS)
+  - Google Cloud Pub/Sub
+  - BigQuery
+  - Cloud Spanner
+
+- **Sinks**
+  - Google Cloud Storage (GCS)
+  - Google Cloud Pub/Sub
+  - BigQuery
+  - Cloud Spanner
+
+## Common Configuration Patterns
+
+### Schema Configuration
+All sources require a schema definition:
 
 ```yaml
 source:
-  type: "msk"
-  config:
-    bootstrapServers: "${MSK_BOOTSTRAP_SERVERS}"
-    topics: ["my-topic"]
-    groupId: "my-consumer-group"
-    securityProtocol: "SASL_SSL"
-    saslMechanism: "AWS_MSK_IAM"
-    isolation: "read_committed"
-    monitoring:
-      enabled: true
-      metrics: ["lag", "throughput", "errors"]
-    watermark:
-      timestampField: "event_time"
-      maxOutOfOrderness: "5s"
+  type: "service-type"
+  schema:
+    type: "object"
+    properties:
+      timestamp:
+        type: "long"
+        format: "unix-timestamp"
+      data:
+        type: "object"
 ```
 
-## AWS Sinks
+### Watermark Configuration
+For event-time processing:
 
-### Amazon S3
+```yaml
+source:
+  type: "service-type"
+  watermark:
+    timestampField: "event_time"
+    maxOutOfOrderness: "5s"
+```
+
+### Monitoring Configuration
+Enable monitoring for sources and sinks:
+
+```yaml
+source:
+  type: "service-type"
+  monitoring:
+    enabled: true
+    metrics: ["latency", "throughput", "errors"]
+```
+
+### Fault Tolerance
+Configure delivery guarantees and error handling:
 
 ```yaml
 sink:
-  type: "s3"
+  type: "service-type"
   config:
-    bucket: "my-output-bucket"
-    path: "output/data"
-    format: "parquet"
-    partitioning:
-      - field: "year"
-        extractFromTimestamp: "event_time"
-      - field: "month"
-        extractFromTimestamp: "event_time"
-    compression: "snappy"
-    maxFileSize: "128mb"
-    inactivityInterval: "5m"
-```
-
-### Amazon Kinesis
-
-```yaml
-sink:
-  type: "kinesis"
-  config:
-    stream: "my-output-stream"
-    region: "us-west-2"
-    partitionKey: "user_id"
-    aggregation: true
-    failOnErrors: true
-    monitoring:
-      enabled: true
-      metrics: ["latency", "throughput", "errors"]
-```
-
-### Amazon MSK
-
-```yaml
-sink:
-  type: "msk"
-  config:
-    bootstrapServers: "${MSK_BOOTSTRAP_SERVERS}"
-    topic: "my-output-topic"
-    securityProtocol: "SASL_SSL"
-    saslMechanism: "AWS_MSK_IAM"
     delivery: "exactly_once"
-    transaction:
-      timeout: "15m"
-      maxAttempts: 3
+    retries: 3
+    backoff:
+      type: "exponential"
+      initial: "100ms"
+      maximum: "10s"
 ```
 
-### Amazon Redshift
+## Best Practices
 
-```yaml
-sink:
-  type: "redshift"
-  config:
-    cluster: "my-redshift-cluster"
-    database: "my_database"
-    table: "my_table"
-    region: "us-west-2"
-    loadMethod: "copy"  # copy, insert
-    staging:
-      bucket: "my-staging-bucket"
-      path: "redshift-staging"
-    batchSize: "1000"
-    monitoring:
-      enabled: true
-      metrics: ["latency", "throughput", "errors"]
-```
+1. **Schema Validation**: Always define schemas for your sources to ensure data quality
+2. **Monitoring**: Enable monitoring for production deployments
+3. **Watermarks**: Configure appropriate watermarks for event-time processing
+4. **Batching**: Optimize batch sizes for your specific use case
+5. **Error Handling**: Configure appropriate retry policies and error thresholds
 
-## GCP Sources
-
-### Google Cloud Storage (GCS)
-
-```yaml
-source:
-  type: "gcs"
-  config:
-    bucket: "my-data-bucket"
-    path: "input/data/*.parquet"
-    format: "parquet"  # parquet, json, csv, avro
-    maxConcurrentRequests: 10
-    monitoring:
-      enabled: true
-      metrics: ["latency", "throughput", "errors"]
-    checkpointing:
-      enabled: true
-      interval: "1m"
-```
-
-### Google Cloud Pub/Sub
-
-```yaml
-source:
-  type: "pubsub"
-  config:
-    subscription: "projects/my-project/subscriptions/my-subscription"
-    maxOutstandingMessages: 1000
-    maxOutstandingBytes: "1gb"
-    monitoring:
-      enabled: true
-      metrics: ["latency", "throughput", "errors"]
-    watermark:
-      timestampField: "event_time"
-      maxOutOfOrderness: "5s"
-```
-
-### BigQuery
-
-```yaml
-source:
-  type: "bigquery"
-  config:
-    project: "my-project"
-    dataset: "my_dataset"
-    table: "my_table"
-    viewMaterializationProject: "my-project"  # For views
-    viewMaterializationDataset: "temp_dataset"
-    parallelism: 10
-    monitoring:
-      enabled: true
-      metrics: ["latency", "throughput", "errors"]
-```
-
-## GCP Sinks
-
-### Google Cloud Storage (GCS)
-
-```yaml
-sink:
-  type: "gcs"
-  config:
-    bucket: "my-output-bucket"
-    path: "output/data"
-    format: "parquet"
-    partitioning:
-      - field: "year"
-        extractFromTimestamp: "event_time"
-      - field: "month"
-        extractFromTimestamp: "event_time"
-    compression: "snappy"
-    maxFileSize: "128mb"
-    inactivityInterval: "5m"
-```
-
-### Google Cloud Pub/Sub
-
-```yaml
-sink:
-  type: "pubsub"
-  config:
-    topic: "projects/my-project/topics/my-topic"
-    batchSize: 100
-    maxBatchSize: "1mb"
-    maxBatchDuration: "500ms"
-    orderingKey: "user_id"  # For ordered delivery
-    monitoring:
-      enabled: true
-      metrics: ["latency", "throughput", "errors"]
-```
-
-### BigQuery
-
-```yaml
-sink:
-  type: "bigquery"
-  config:
-    project: "my-project"
-    dataset: "my_dataset"
-    table: "my_table"
-    createDisposition: "CREATE_IF_NEEDED"
-    writeDisposition: "WRITE_APPEND"
-    partitioning:
-      type: "time"
-      field: "event_time"
-      expirationMs: 2592000000  # 30 days
-    clustering:
-      fields: ["user_id", "event_type"]
-    monitoring:
-      enabled: true
-      metrics: ["latency", "throughput", "errors"]
-```
-
-## Common Features
-
-All sources and sinks support these common configurations:
-
-### Error Handling
-
-```yaml
-errorHandling:
-  retries:
-    maxAttempts: 3
-    backoffPeriod: "1s"
-    maxBackoffPeriod: "1m"
-    multiplier: 2.0
-  deadLetter:
-    enabled: true
-    destination: "s3://my-bucket/dead-letter"  # or gs:// for GCP
-```
-
-### Monitoring
-
-```yaml
-monitoring:
-  metrics:
-    - name: "throughput"
-      interval: "1m"
-    - name: "latency"
-      interval: "1m"
-    - name: "errors"
-      interval: "1m"
-  alerts:
-    - name: "HighLatency"
-      threshold: "5s"
-      duration: "5m"
-    - name: "HighErrorRate"
-      threshold: 0.01
-      duration: "5m"
-```
-
-### Schema Evolution
-
-```yaml
-schema:
-  evolution:
-    mode: "forward"  # forward, backward, full
-    compatibility: "strict"  # strict, relaxed
-  validation:
-    enabled: true
-    mode: "warn"  # warn, fail
-```
-
-<Tip>
-**Performance Tip**: For optimal performance, adjust batch sizes and parallelism based on your data volume and latency requirements.
-</Tip>
-
-<Warning>
-Remember to configure appropriate IAM roles and permissions for accessing these services. Refer to the cloud-specific documentation for security best practices. 
+For detailed configuration examples, refer to:
+- [AWS Integration](/cloud-connectors/aws)
+- [GCP Integration](/cloud-connectors/gcp)
+- [Basic Streaming Example](/examples/basic-streaming)
+- [Window Analytics Example](/examples/window-analytics)
+- [Session Analytics Example](/examples/complex-events) 
