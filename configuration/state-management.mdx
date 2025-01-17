@@ -1,15 +1,19 @@
 ---
 title: "State Management"
-description: "Guide to state management and infrastructure provisioning in Gulp"
+description: "Comprehensive guide to state management and infrastructure provisioning in Gulp"
 ---
 
 # State Management
 
-Gulp provides automated state management and infrastructure provisioning through the Gulp Web Tool, which handles all the underlying complexity of setting up and maintaining state backends.
+Gulp provides automated state management and infrastructure provisioning through the Gulp Web Tool, which handles all the underlying complexity of setting up and maintaining state backends. This guide covers everything from basic setup to advanced configurations and troubleshooting.
+
+<Note>
+State management is a critical component of any Flink application. Gulp abstracts away the complexity while maintaining full configurability for advanced users.
+</Note>
 
 ## Automated Infrastructure Provisioning
 
-Gulp Web Tool automatically provisions and manages the required infrastructure based on your cloud provider:
+Gulp Web Tool automatically provisions and manages the required infrastructure based on your cloud provider. Our infrastructure-as-code approach ensures consistency and reliability.
 
 ### AWS Infrastructure
 
@@ -18,23 +22,44 @@ infrastructure:
   provider: "aws"
   region: "us-west-2"
   stateBackend:
-    type: "s3"  # Automatically provisioned via CloudFormation
+    type: "rocksdb"  # Automatically provisioned via CloudFormation
     checkpointInterval: "5m"
-    
+    incrementalCheckpoints: true
+    localRecovery: true
+    rocksdb:
+      predefinedOptions: "FLASH_SSD_OPTIMIZED"
+      compactionStyle: "LEVEL"
+      blockSize: "64kb"
+      writeBufferSize: "64mb"
+      
   resources:
     # Automatically provisioned and configured
-    - s3StateBackend
-    - dynamoDbCheckpoints
-    - cloudwatchMetrics
-    - iamRoles
+    - s3StateBackend:
+        bucketName: "gulp-${ENVIRONMENT}-flink-state"
+        encryption: "KMS"
+        versioning: true
+        lifecycle:
+          transitionDays: 30
+          expirationDays: 90
+    - dynamoDbCheckpoints:
+        tableName: "gulp-${ENVIRONMENT}-checkpoints"
+        readCapacity: "auto"
+        writeCapacity: "auto"
+    - cloudwatchMetrics:
+        namespace: "Gulp/Flink"
+        retention: 90
+    - iamRoles:
+        permissions: "least-privilege"
 ```
 
+<Accordion title="AWS Infrastructure Details">
 The Gulp Web Tool will automatically:
-- Create S3 buckets for state storage
-- Set up DynamoDB tables for checkpoint coordination
-- Configure IAM roles and permissions
-- Set up CloudWatch metrics and alarms
-- Manage infrastructure lifecycle
+- Create S3 buckets for state storage with KMS encryption and versioning
+- Set up DynamoDB tables with auto-scaling for checkpoint coordination
+- Configure IAM roles and permissions with least privilege principle
+- Set up CloudWatch metrics, dashboards, and alarms
+- Manage complete infrastructure lifecycle
+</Accordion>
 
 ### GCP Infrastructure
 
@@ -43,27 +68,48 @@ infrastructure:
   provider: "gcp"
   region: "us-central1"
   stateBackend:
-    type: "gcs"  # Automatically provisioned via Deployment Manager
+    type: "rocksdb"  # Automatically provisioned via Terraform
     checkpointInterval: "5m"
+    incrementalCheckpoints: true
+    localRecovery: true
+    rocksdb:
+      predefinedOptions: "FLASH_SSD_OPTIMIZED"
+      compactionStyle: "LEVEL"
+      blockSize: "64kb"
+      writeBufferSize: "64mb"
     
   resources:
     # Automatically provisioned and configured
-    - gcsStateBackend
-    - datastore
-    - monitoring
-    - serviceAccounts
+    - gcsStateBackend:
+        bucketName: "gulp-${ENVIRONMENT}-flink-state"
+        encryption: "CMEK"
+        uniformAccess: true
+        lifecycle:
+          coldlineAfterDays: 30
+          archiveAfterDays: 90
+    - cloudSqlCheckpoints:
+        instance: "gulp-${ENVIRONMENT}-checkpoints"
+        tier: "db-custom-2-8192"
+        highAvailability: true
+    - monitoring:
+        workspace: "gulp-${ENVIRONMENT}"
+        retention: 90
+    - serviceAccounts:
+        permissions: "least-privilege"
 ```
 
+<Accordion title="GCP Infrastructure Details">
 The Gulp Web Tool will automatically:
-- Create GCS buckets for state storage
-- Set up Datastore for checkpoint coordination
-- Configure service accounts and IAM
-- Set up monitoring and alerting
-- Manage infrastructure lifecycle
+- Create GCS buckets with Customer-Managed Encryption Keys (CMEK)
+- Set up Cloud SQL instances with high availability for checkpoint coordination
+- Configure service accounts with minimal required permissions
+- Set up Cloud Monitoring workspaces with custom dashboards
+- Manage complete infrastructure lifecycle
+</Accordion>
 
 ## State Backend Configuration
 
-While infrastructure is provisioned automatically, you can still configure state behavior:
+While infrastructure is provisioned automatically, you can fine-tune state behavior:
 
 ```yaml
 stateConfig:
@@ -74,91 +120,221 @@ stateConfig:
     timeout: "10m"
     minPause: "1s"
     maxConcurrent: 1
+    unalignedCheckpoints: true
+    alignmentTimeout: "30s"
     
   # State Backend Options
   backend:
-    incremental: true
+    type: "rocksdb"  # rocksdb is recommended for production
+    incrementalCheckpoints: true
     localRecovery: true
     memory:
       managedMemorySize: "256mb"
       retainedInMemory: "128mb"
-    
+    rocksdb:
+      predefinedOptions: "FLASH_SSD_OPTIMIZED"
+      compactionStyle: "LEVEL"
+      blockSize: "64kb"
+      writeBufferSize: "64mb"
+      maxOpenFiles: 10000
+      targetFileSize: "64mb"
+      
   # Recovery Configuration
   recovery:
     mode: "latest-complete"  # latest-complete, latest-available
     restartStrategy: "fixed-delay"
     maxAttempts: 3
+    failureRate:
+      max: 3
+      interval: "5m"
+    delay:
+      initial: "1s"
+      maximum: "60s"
+      multiplier: 2.0
 ```
+
+<Tip>
+**Performance Tip**: For large state sizes, enable unaligned checkpoints and tune RocksDB parameters based on your storage type and workload patterns.
+</Tip>
 
 ## Managed Features
 
 ### 1. Automatic Scaling
-The Gulp Web Tool automatically scales state backend resources:
+The Gulp Web Tool implements intelligent scaling based on multiple metrics:
 
-- Storage capacity adjusts based on state size
-- Throughput scales with checkpoint frequency
-- Memory allocation optimizes based on usage patterns
+```yaml
+scaling:
+  autoScaling:
+    enabled: true
+    metrics:
+      - type: cpu
+        targetUtilization: 70
+        scaleOutCooldown: "3m"
+        scaleInCooldown: "5m"
+      - type: memory
+        targetUtilization: 80
+        scaleOutCooldown: "3m"
+        scaleInCooldown: "5m"
+      - type: custom
+        metric: "flink_taskmanager_job_latency"
+        targetValue: "1000ms"
+        scaleOutThreshold: "2000ms"
+        scaleInThreshold: "500ms"
+    minReplicas: 1
+    maxReplicas: 5
+    stabilizationWindowSeconds: 300
+    behavior:
+      scaleUp:
+        policies:
+          - type: Pods
+            value: 1
+            periodSeconds: 60
+      scaleDown:
+        policies:
+          - type: Pods
+            value: 1
+            periodSeconds: 300
+```
 
 ### 2. High Availability
-Built-in high availability features:
+Built-in high availability features with cloud-native implementations:
 
-- Automatic replication across availability zones
-- Failover handling for state backends
-- Consistent state recovery after failures
+```yaml
+highAvailability:
+  enabled: true
+  storageDir: "s3://gulp-${ENVIRONMENT}-flink-state/ha"  # or gs:// for GCP
+  zookeeper:
+    enabled: false  # Using cloud-native HA
+  kubernetesHa:
+    enabled: true
+    leaseDuration: "15s"
+    renewDeadline: "10s"
+    retryPeriod: "2s"
+  jobManagerHa:
+    maxAttempts: 3
+    failoverStrategy: "region"
+    heartbeatTimeout: "30s"
+```
 
 ### 3. Monitoring and Alerts
-Integrated monitoring system:
+Comprehensive monitoring system with pre-configured dashboards:
 
 ```yaml
 monitoring:
   metrics:
-    - checkpointDuration
-    - checkpointSize
-    - stateSize
-    - recoveryTime
+    - name: "checkpointDuration"
+      period: "1m"
+      statistic: "Average"
+      dimensions:
+        - job
+        - task
+    - name: "checkpointSize"
+      period: "5m"
+      statistic: "Max"
+      dimensions:
+        - job
+        - task
+    - name: "stateSize"
+      period: "5m"
+      statistic: "Average"
+      dimensions:
+        - job
+        - task
     
   alerts:
     - name: "LargeStateSize"
       threshold: "10GB"
       duration: "15m"
+      severity: "warning"
+      notification:
+        channels: ["slack", "email"]
     - name: "SlowCheckpoint"
       threshold: "5m"
       duration: "10m"
+      severity: "critical"
+      notification:
+        channels: ["pagerduty"]
+    - name: "HighRecoveryTime"
+      threshold: "10m"
+      duration: "5m"
+      severity: "critical"
+      notification:
+        channels: ["pagerduty"]
+
+  dashboards:
+    - name: "State Overview"
+      refresh: "30s"
+      panels:
+        - title: "State Size Growth"
+          type: "graph"
+          metrics: ["stateSize"]
+        - title: "Checkpoint Performance"
+          type: "graph"
+          metrics: ["checkpointDuration", "checkpointSize"]
 ```
 
 ### 4. Cost Optimization
-Automatic cost optimization features:
+Intelligent cost optimization with automated lifecycle management:
 
-- State cleanup for expired windows
-- Storage class transitions
-- Resource scaling based on usage
+```yaml
+costOptimization:
+  stateCleanup:
+    enabled: true
+    ttl: "7d"
+    cleanupSchedule: "0 0 * * *"
+    excludedKeys: ["critical-state-*"]
+  storageClass:
+    enabled: true
+    transitionDelay: "30d"
+    archiveDelay: "90d"
+    archiveClass: "STANDARD_IA"  # or "NEARLINE" for GCP
+  resourceOptimization:
+    enabled: true
+    scaleToZero: true
+    idleTimeout: "1h"
+```
 
 ## Security
 
-The Gulp Web Tool automatically configures security best practices:
+The Gulp Web Tool implements comprehensive security controls:
 
 ```yaml
 security:
   encryption:
-    atRest: true
-    inTransit: true
-    keyRotation: "30d"
+    atRest:
+      enabled: true
+      keyType: "KMS"  # or "CMEK" for GCP
+      keyRotation: "30d"
+      algorithm: "AES256"
+    inTransit:
+      enabled: true
+      tlsVersion: "1.3"
+      minimumTlsVersion: "1.2"
     
   access:
-    networkPolicy: "private"
-    authentication: "iam"
-    audit: true
+    networkPolicy:
+      type: "private"
+      allowedCidrs: ["10.0.0.0/8"]
+      serviceEndpoints: true
+    authentication:
+      type: "iam"
+      mfa: true
+      sessionDuration: "12h"
+    audit:
+      enabled: true
+      retention: "365d"
+      detailLevel: "full"
 ```
 
 Features include:
-- Encryption at rest and in transit
-- Network isolation
-- IAM integration
-- Audit logging
+- Encryption at rest using KMS/Cloud KMS with automatic key rotation
+- Network isolation via VPC/VPC Service Controls with private endpoints
+- IAM integration with least privilege and MFA enforcement
+- Comprehensive audit logging with long-term retention
 
 ## Disaster Recovery
 
-Built-in disaster recovery capabilities:
+Enterprise-grade disaster recovery capabilities:
 
 ```yaml
 disasterRecovery:
@@ -166,56 +342,68 @@ disasterRecovery:
     enabled: true
     frequency: "1h"
     retention: "7d"
+    type: "incremental"
+    encryption: true
+    validation: true
     
   recovery:
     rpo: "1h"  # Recovery Point Objective
     rto: "15m"  # Recovery Time Objective
+    crossRegion:
+      enabled: true
+      regions: ["us-west-2", "us-east-1"]
+    testing:
+      schedule: "0 0 * * 0"  # Weekly
+      validation: true
 ```
 
-Features:
-- Automated backups
-- Point-in-time recovery
-- Cross-region replication
-- Recovery testing
+<Warning>
+Regular disaster recovery testing is crucial. Gulp automatically performs weekly recovery tests to ensure your RPO and RTO objectives can be met.
+</Warning>
 
 ## Best Practices
 
 1. **Monitoring**
-   - Monitor state size growth
-   - Track checkpoint performance
+   - Monitor state size growth trends
+   - Track checkpoint performance metrics
    - Set up alerts for anomalies
+   - Use custom dashboards for visibility
 
 2. **Performance**
-   - Use incremental checkpointing
+   - Use RocksDB state backend for production
+   - Enable incremental checkpointing
    - Configure appropriate intervals
    - Enable local recovery
+   - Tune RocksDB parameters for your workload
 
 3. **Cost Management**
    - Enable state TTL where applicable
-   - Monitor storage usage
+   - Monitor storage usage patterns
    - Use appropriate storage classes
+   - Implement automated cleanup policies
 
 4. **Security**
-   - Review access patterns
-   - Monitor audit logs
-   - Regularly rotate keys
+   - Review access patterns regularly
+   - Monitor audit logs for anomalies
+   - Regularly rotate encryption keys
+   - Implement network isolation
 
 ## Limitations and Considerations
 
 1. **Storage Limits**
-   - Maximum state size per key group
-   - Checkpoint size limitations
-   - Recovery time considerations
+   - Maximum state size per key group: 100GB recommended
+   - Checkpoint size limitations: Based on network bandwidth
+   - Recovery time considerations: Linear with state size
 
 2. **Performance Impact**
-   - Checkpoint overhead
-   - Recovery time vs. state size
-   - Network bandwidth requirements
+   - Checkpoint overhead: 5-15% CPU utilization
+   - Recovery time vs. state size: ~100MB/s restore rate
+   - Network bandwidth requirements: Plan for 2x state size
 
 3. **Cost Factors**
-   - Storage costs
-   - Data transfer costs
-   - Operation costs
+   - Storage costs: Based on state size and storage class
+   - Data transfer costs: Consider cross-region replication
+   - Operation costs: Backup and recovery operations
 
 ## Troubleshooting
 
@@ -228,6 +416,11 @@ Common issues and solutions:
        action: "retry"
        maxAttempts: 3
        backoffPeriod: "30s"
+       diagnostics:
+         enabled: true
+         detail: "full"
+       notification:
+         channels: ["slack"]
    ```
 
 2. **State Size Issues**
@@ -237,6 +430,9 @@ Common issues and solutions:
        enabled: true
        ttl: "7d"
        cleanupInterval: "1h"
+       monitoring:
+         threshold: "5GB"
+         action: "alert"
    ```
 
 3. **Recovery Problems**
@@ -246,4 +442,11 @@ Common issues and solutions:
        diagnostics: true
        verboseLogging: true
        savepoint: "latest"
-   ``` 
+       metrics:
+         enabled: true
+         retention: "7d"
+   ```
+
+<Tip>
+**Pro Tip**: Enable verbose logging temporarily during troubleshooting, but remember to disable it in production to avoid performance impact.
+</Tip> 
