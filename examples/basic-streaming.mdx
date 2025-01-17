@@ -1,0 +1,82 @@
+---
+title: "Basic Streaming"
+description: "Getting started with basic streaming in Gulp"
+---
+
+# Basic Streaming Example
+
+This guide demonstrates a basic streaming application using Gulp.
+
+## Simple Event Processing
+
+```yaml
+name: "Simple Event Processing"
+version: "1.0.0"
+
+source:
+  type: "kafka"
+  config:
+    bootstrapServers: "${KAFKA_BOOTSTRAP_SERVERS}"
+    topic: "events"
+    groupId: "event-processor"
+    
+transformations:
+  - name: "Parse JSON"
+    type: "deserialize"
+    format: "json"
+    
+  - name: "Filter Valid Events"
+    type: "filter"
+    condition: "event_type != null"
+    
+  - name: "Enrich Events"
+    type: "map"
+    fields:
+      - name: "processed_timestamp"
+        value: "CURRENT_TIMESTAMP"
+      - name: "environment"
+        value: "${ENV}"
+        
+sink:
+  type: "kafka"
+  config:
+    bootstrapServers: "${KAFKA_BOOTSTRAP_SERVERS}"
+    topic: "processed-events"
+    delivery: "exactly_once"
+```
+
+## Configuration Explanation
+
+### Source Configuration
+- Reads events from a Kafka topic
+- Uses environment variables for connection details
+- Configures consumer group for scalability
+
+### Transformations
+1. **Parse JSON**: Deserializes incoming messages
+2. **Filter**: Removes invalid events
+3. **Enrichment**: Adds processing metadata
+
+### Sink Configuration
+- Writes to output Kafka topic
+- Ensures exactly-once delivery
+- Uses same cluster as source
+
+## Running the Example
+
+1. Set environment variables:
+   ```bash
+   export KAFKA_BOOTSTRAP_SERVERS="kafka:9092"
+   export ENV="production"
+   ```
+
+2. Deploy the job:
+   ```bash
+   gulp deploy basic-streaming.yaml
+   ```
+
+3. Monitor the job:
+   ```bash
+   gulp jobs list
+   gulp jobs logs basic-streaming
+   ``` 

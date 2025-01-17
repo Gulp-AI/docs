@@ -1,0 +1,102 @@
+---
+title: "Window Analytics"
+description: "Implementing windowed analytics with Gulp"
+---
+
+# Window Analytics Example
+
+This guide demonstrates how to implement windowed analytics using Gulp.
+
+## User Session Analysis
+
+```yaml
+name: "User Session Analytics"
+version: "1.0.0"
+
+source:
+  type: "kinesis"
+  config:
+    stream: "user-events"
+    region: "us-west-2"
+    initialPosition: "LATEST"
+    
+transformations:
+  - name: "Parse Events"
+    type: "deserialize"
+    format: "json"
+    
+  - name: "Extract Timestamp"
+    type: "map"
+    fields:
+      - name: "event_time"
+        value: "timestamp"
+        type: "timestamp"
+        
+  - name: "Session Window"
+    type: "window"
+    config:
+      type: "session"
+      gap: "30m"
+      key: "user_id"
+      timestamp: "event_time"
+      
+  - name: "Session Analytics"
+    type: "aggregate"
+    groupBy: ["user_id"]
+    operations:
+      - name: "event_count"
+        type: "count"
+      - name: "session_duration"
+        type: "max_minus_min"
+        field: "event_time"
+      - name: "total_value"
+        type: "sum"
+        field: "transaction_value"
+        
+sink:
+  type: "s3"
+  config:
+    bucket: "analytics-results"
+    path: "session-analytics"
+    format: "parquet"
+    partitioning:
+      - field: "year"
+        extractFromTimestamp: "window_end"
+      - field: "month"
+        extractFromTimestamp: "window_end"
+```
+
+## Configuration Explanation
+
+### Source Configuration
+- Reads user events from Kinesis
+- Configures for real-time processing
+- Handles late-arriving data
+
+### Transformations
+1. **Parse Events**: JSON deserialization
+2. **Timestamp Extraction**: For windowing
+3. **Session Window**: Groups events by user sessions
+4. **Analytics**: Computes session metrics
+
+### Sink Configuration
+- Writes to S3 in Parquet format
+- Time-based partitioning
+- Optimized for analytics queries
+
+## Running the Example
+
+1. Create required resources:
+   ```bash
+   gulp resources create --file session-analytics-resources.yaml
+   ```
+
+2. Deploy the job:
+   ```bash
+   gulp deploy window-analytics.yaml
+   ```
+
+3. Monitor session analytics:
+   ```bash
+   gulp jobs metrics window-analytics
+   ``` 

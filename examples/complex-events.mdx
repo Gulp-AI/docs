@@ -1,0 +1,146 @@
+---
+title: "Complex Event Processing"
+description: "Implementing complex event processing patterns with Gulp"
+---
+
+# Complex Event Processing
+
+This guide demonstrates advanced event processing patterns using Gulp.
+
+## Fraud Detection Example
+
+```yaml
+name: "Fraud Detection"
+version: "1.0.0"
+
+source:
+  type: "msk"
+  config:
+    bootstrapServers: "${MSK_BOOTSTRAP_SERVERS}"
+    topics: ["transactions"]
+    groupId: "fraud-detector"
+    securityProtocol: "SASL_SSL"
+    saslMechanism: "AWS_MSK_IAM"
+    
+transformations:
+  - name: "Parse Transaction"
+    type: "deserialize"
+    format: "json"
+    
+  - name: "Enrich with User Data"
+    type: "lookup"
+    config:
+      source: "dynamodb"
+      table: "user_profiles"
+      key: "user_id"
+      fields: ["risk_score", "usual_locations"]
+      
+  - name: "Transaction Window"
+    type: "window"
+    config:
+      type: "sliding"
+      size: "1h"
+      slide: "1m"
+      key: "user_id"
+      timestamp: "transaction_time"
+      
+  - name: "Fraud Detection Rules"
+    type: "cep"
+    patterns:
+      - name: "High Frequency Trading"
+        within: "5m"
+        match:
+          - condition: "count(*) > 10"
+            
+      - name: "Unusual Location"
+        match:
+          - condition: "location NOT IN usual_locations"
+            
+      - name: "Large Amount"
+        match:
+          - condition: "amount > 10000 AND risk_score > 0.7"
+            
+  - name: "Aggregate Alerts"
+    type: "aggregate"
+    groupBy: ["user_id", "pattern_name"]
+    operations:
+      - name: "alert_count"
+        type: "count"
+      - name: "total_amount"
+        type: "sum"
+        field: "amount"
+        
+sink:
+  type: "kinesis"
+  config:
+    stream: "fraud-alerts"
+    region: "us-west-2"
+    partitionKey: "user_id"
+    monitoring:
+      enabled: true
+      metrics: ["latency", "throughput", "errors"]
+```
+
+## Configuration Explanation
+
+### Source Configuration
+- Reads from MSK with IAM authentication
+- Processes real-time transactions
+- Secure communication with SASL/SSL
+
+### Transformations
+1. **Parse Transaction**: JSON deserialization
+2. **User Enrichment**: DynamoDB lookup
+3. **Window**: Sliding window for temporal analysis
+4. **Fraud Detection**: Complex event patterns
+5. **Aggregation**: Alert summarization
+
+### Sink Configuration
+- Real-time alerts to Kinesis
+- Monitoring enabled
+- Partitioned by user_id
+
+## Pattern Details
+
+### High Frequency Trading
+Detects rapid succession of transactions:
+```yaml
+pattern:
+  within: "5m"
+  match:
+    - condition: "count(*) > 10"
+```
+
+### Unusual Location
+Compares transaction location with user profile:
+```yaml
+pattern:
+  match:
+    - condition: "location NOT IN usual_locations"
+```
+
+### Large Amount
+Combines transaction size with risk score:
+```yaml
+pattern:
+  match:
+    - condition: "amount > 10000 AND risk_score > 0.7"
+```
+
+## Running the Example
+
+1. Set up prerequisites:
+   ```bash
+   gulp resources create --file fraud-detection-resources.yaml
+   ```
+
+2. Deploy the job:
+   ```bash
+   gulp deploy fraud-detection.yaml
+   ```
+
+3. Monitor alerts:
+   ```bash
+   gulp jobs logs fraud-detection
+   gulp metrics fraud-detection --pattern="alerts"
+   ``` 
