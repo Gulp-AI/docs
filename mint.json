@@ -1,6 +1,6 @@
 {
   "$schema": "https://mintlify.com/schema.json",
-  "name": "Starter Kit",
+  "name": "Gulp Planner",
   "logo": {
     "dark": "/logo/dark.svg",
     "light": "/logo/light.svg"
@@ -17,75 +17,49 @@
   },
   "topbarLinks": [
     {
-      "name": "Support",
-      "url": "mailto:hi@mintlify.com"
-    }
-  ],
-  "topbarCtaButton": {
-    "name": "Dashboard",
-    "url": "https://dashboard.mintlify.com"
-  },
-  "tabs": [
-    {
-      "name": "API Reference",
-      "url": "api-reference"
-    }
-  ],
-  "anchors": [
-    {
-      "name": "Documentation",
-      "icon": "book-open-cover",
-      "url": "https://mintlify.com/docs"
-    },
-    {
-      "name": "Community",
-      "icon": "slack",
-      "url": "https://mintlify.com/community"
-    },
-    {
-      "name": "Blog",
-      "icon": "newspaper",
-      "url": "https://mintlify.com/blog"
+      "name": "GitHub",
+      "url": "https://github.com/yourusername/gulp-planner"
     }
   ],
   "navigation": [
     {
-      "group": "Get Started",
+      "group": "Overview",
+      "pages": ["introduction"]
+    },
+    {
+      "group": "Configuration",
       "pages": [
-        "introduction",
-        "quickstart",
-        "development"
+        "configuration/basic-structure",
+        "configuration/connectors",
+        "configuration/windowing",
+        "configuration/aggregations",
+        "configuration/state"
       ]
     },
     {
-      "group": "Essentials",
+      "group": "Cloud Connectors",
       "pages": [
-        "essentials/markdown",
-        "essentials/code",
-        "essentials/images",
-        "essentials/settings",
-        "essentials/navigation",
-        "essentials/reusable-snippets"
+        "cloud-connectors/aws",
+        "cloud-connectors/gcp",
+        "cloud-connectors/azure"
       ]
     },
     {
-      "group": "API Documentation",
+      "group": "Examples",
       "pages": [
-        "api-reference/introduction"
+        "examples/basic-streaming",
+        "examples/window-analytics",
+        "examples/complex-events"
       ]
     },
     {
-      "group": "Endpoint Examples",
+      "group": "Operations",
       "pages": [
-        "api-reference/endpoint/get",
-        "api-reference/endpoint/create",
-        "api-reference/endpoint/delete"
+        "operations/index"
       ]
     }
   ],
   "footerSocials": {
-    "x": "https://x.com/mintlify",
-    "github": "https://github.com/mintlify",
-    "linkedin": "https://linkedin.com/company/mintlify"
+    "github": "https://github.com/yourusername/gulp-planner"
   }
 }
