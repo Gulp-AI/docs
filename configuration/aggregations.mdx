@@ -1,0 +1,219 @@
+---
+title: "Aggregation Configuration"
+description: "Detailed guide on configuring aggregations in Gulp"
+---
+
+# Aggregation Configuration
+
+Gulp supports various aggregation operations that can be applied to windowed data streams. These aggregations can be combined and configured to compute complex analytics.
+
+## Supported Operations
+
+### Sum
+
+Calculates the sum of numeric values in a window.
+
+```yaml
+aggregateRules:
+  - name: "totalAmount"
+    field: "amount"
+    operation: "sum"
+    fieldType: "double" # or "long"
+```
+
+### Average
+
+Calculates the arithmetic mean of numeric values in a window.
+
+```yaml
+aggregateRules:
+  - name: "averagePrice"
+    field: "price"
+    operation: "avg"
+    fieldType: "double"
+```
+
+### Count
+
+Counts the number of elements or unique elements in a window.
+
+```yaml
+aggregateRules:
+  - name: "totalOrders"
+    field: "orderId"
+    operation: "count"
+    fieldType: "long"
+    distinct: false # optional, defaults to false
+
+  - name: "uniqueCustomers"
+    field: "customerId"
+    operation: "count"
+    fieldType: "long"
+    distinct: true
+```
+
+### Minimum
+
+Finds the minimum value in a window.
+
+```yaml
+aggregateRules:
+  - name: "lowestPrice"
+    field: "price"
+    operation: "min"
+    fieldType: "double"
+```
+
+### Maximum
+
+Finds the maximum value in a window.
+
+```yaml
+aggregateRules:
+  - name: "highestPrice"
+    field: "price"
+    operation: "max"
+    fieldType: "double"
+```
+
+## Configuration Options
+
+### Common Options
+
+| Option | Description | Required | Default |
+|--------|-------------|----------|----------|
+| name | Name of the output field | Yes | - |
+| field | Input field to aggregate | Yes | - |
+| operation | Aggregation operation (sum, avg, count, min, max) | Yes | - |
+| fieldType | Output field type (double, long, string) | Yes | - |
+| distinct | Whether to count distinct values (only for count) | No | false |
+
+### Field Types
+
+The following field types are supported for aggregations:
+
+| Field Type | Description | Supported Operations |
+|------------|-------------|---------------------|
+| double | 64-bit floating point | sum, avg, min, max |
+| long | 64-bit integer | sum, avg, min, max, count |
+| string | Text value | count (with distinct) |
+
+## Multiple Aggregations
+
+You can combine multiple aggregations in a single window:
+
+```yaml
+aggregateRules:
+  - name: "totalValue"
+    field: "price"
+    operation: "sum"
+    fieldType: "double"
+  
+  - name: "avgPrice"
+    field: "price"
+    operation: "avg"
+    fieldType: "double"
+  
+  - name: "uniqueProducts"
+    field: "productId"
+    operation: "count"
+    fieldType: "long"
+    distinct: true
+```
+
+## Null Value Handling
+
+- Null values are skipped in numeric aggregations (sum, avg, min, max)
+- For count operations, null values are:
+  - Included in regular counts
+  - Excluded from distinct counts
+- Default values for empty windows:
+  - Numeric operations (sum, min, max): 0
+  - Average: 0
+  - Count: 0
+
+## Best Practices
+
+1. **Field Type Selection**
+   - Use `double` for decimal values or when high precision is needed
+   - Use `long` for integer values or counts
+   - Consider memory usage when choosing between types
+
+2. **Naming Conventions**
+   - Use descriptive names for output fields
+   - Consider adding operation type to field names (e.g., totalAmount, avgPrice)
+   - Be consistent with naming across your application
+
+3. **Performance Considerations**
+   - Distinct counts can be memory-intensive for high-cardinality fields
+   - Multiple aggregations on the same field are optimized internally
+   - Consider the trade-off between precision and performance when choosing field types
+
+4. **Data Quality**
+   - Add data validation before aggregation when possible
+   - Monitor for unexpected null values or data type mismatches
+   - Consider adding error handling for invalid numeric values
+
+## Examples
+
+### E-commerce Analytics
+
+```yaml
+window:
+  type: TUMBLING
+  size: 5
+  timeUnit: MINUTES
+
+aggregateRules:
+  - name: "totalRevenue"
+    field: "orderAmount"
+    operation: "sum"
+    fieldType: "double"
+  
+  - name: "averageOrderValue"
+    field: "orderAmount"
+    operation: "avg"
+    fieldType: "double"
+  
+  - name: "uniqueCustomers"
+    field: "customerId"
+    operation: "count"
+    fieldType: "long"
+    distinct: true
+  
+  - name: "totalOrders"
+    field: "orderId"
+    operation: "count"
+    fieldType: "long"
+```
+
+### Sensor Metrics
+
+```yaml
+window:
+  type: SLIDING
+  size: 10
+  slideSize: 1
+  timeUnit: MINUTES
+
+aggregateRules:
+  - name: "avgTemperature"
+    field: "temperature"
+    operation: "avg"
+    fieldType: "double"
+  
+  - name: "maxTemperature"
+    field: "temperature"
+    operation: "max"
+    fieldType: "double"
+  
+  - name: "minTemperature"
+    field: "temperature"
+    operation: "min"
+    fieldType: "double"
+  
+  - name: "readingCount"
+    field: "sensorId"
+    operation: "count"
+    fieldType: "long"
+``` 

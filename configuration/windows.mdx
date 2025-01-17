@@ -1,0 +1,179 @@
+---
+title: "Window Configuration"
+description: "Detailed guide on configuring windows in Gulp"
+---
+
+# Window Configuration
+
+Gulp supports various types of windows for stream processing. Each window type has its own configuration options and is designed for specific use cases.
+
+## Window Types
+
+### Tumbling Windows
+
+Tumbling windows group elements into fixed-size, non-overlapping time windows. Each element belongs to exactly one window.
+
+```yaml
+window:
+  type: TUMBLING
+  size: 5
+  timeUnit: MINUTES
+  allowedLateness: 1 # optional, in same time unit as size
+```
+
+Use cases:
+- Computing statistics over fixed time intervals
+- Periodic data aggregation
+- Batch-like processing within streaming
+
+### Sliding Windows
+
+Sliding windows group elements into fixed-size windows that can overlap. Elements can belong to multiple windows.
+
+```yaml
+window:
+  type: SLIDING
+  size: 10
+  slideSize: 5
+  timeUnit: MINUTES
+  allowedLateness: 1 # optional, in same time unit as size
+```
+
+Use cases:
+- Moving averages
+- Trend detection
+- Continuous monitoring with overlapping periods
+
+### Session Windows
+
+Session windows group elements based on activity periods. Windows are created when events arrive and are merged if they're within the inactivity gap.
+
+```yaml
+window:
+  type: SESSION
+  inactivityTimeout: 30
+  timeUnit: MINUTES
+  maxElementsPerWindow: 1000 # optional
+  allowedLateness: 5 # optional, in same time unit as inactivityTimeout
+```
+
+Use cases:
+- User session analysis
+- Activity-based grouping
+- Event pattern detection with variable time gaps
+
+### Count Windows
+
+Count-based windows group elements based on the number of events rather than time.
+
+#### Tumbling Count Windows
+
+```yaml
+window:
+  type: TUMBLING_COUNT
+  size: 100 # number of elements per window
+```
+
+#### Sliding Count Windows
+
+```yaml
+window:
+  type: SLIDING_COUNT
+  size: 100 # window size in number of elements
+  slideSize: 50 # slide size in number of elements
+```
+
+Use cases:
+- Fixed-size batch processing
+- Sample-based analysis
+- Event-count-based processing
+
+## Time Characteristics
+
+Windows can operate in two time modes:
+
+### Processing Time
+
+Processing time refers to the system time of the machine processing the data.
+
+```yaml
+watermark:
+  timeCharacteristic: PROCESSING_TIME
+```
+
+Advantages:
+- Simpler to reason about
+- Lower latency
+- No need for event timestamps
+
+Disadvantages:
+- Non-deterministic results
+- Less accurate for distributed systems
+
+### Event Time
+
+Event time uses the timestamps embedded in the events themselves.
+
+```yaml
+watermark:
+  timeCharacteristic: EVENT_TIME
+  timestampField: "timestamp"
+  maxOutOfOrderness: 500 # milliseconds
+```
+
+Advantages:
+- Deterministic results
+- Accurate for out-of-order events
+- Better for distributed systems
+
+Disadvantages:
+- Higher latency due to watermark propagation
+- More complex configuration
+- Requires timestamp field in events
+
+## Configuration Options
+
+### Common Options
+
+| Option | Description | Required | Default |
+|--------|-------------|----------|----------|
+| type | Window type (TUMBLING, SLIDING, SESSION, TUMBLING_COUNT, SLIDING_COUNT) | Yes | - |
+| timeUnit | Time unit for size and slide (SECONDS, MINUTES, HOURS, DAYS) | Yes for time-based windows | - |
+| allowedLateness | How long to wait for late events | No | maxOutOfOrderness from watermark config |
+
+### Time-Based Window Options
+
+| Option | Description | Required | Default |
+|--------|-------------|----------|----------|
+| size | Window size in timeUnit | Yes | - |
+| slideSize | Slide interval for SLIDING windows | Yes for SLIDING | - |
+| inactivityTimeout | Session gap for SESSION windows | Yes for SESSION | - |
+
+### Count-Based Window Options
+
+| Option | Description | Required | Default |
+|--------|-------------|----------|----------|
+| size | Number of elements per window | Yes | - |
+| slideSize | Number of elements to slide | Yes for SLIDING_COUNT | - |
+
+## Best Practices
+
+1. **Window Size Selection**
+   - Choose window sizes based on your use case requirements
+   - Consider data arrival rates and processing requirements
+   - Smaller windows provide lower latency but may increase processing overhead
+
+2. **Late Event Handling**
+   - Set appropriate allowedLateness based on your data characteristics
+   - Consider using a larger allowedLateness for session windows to ensure proper merging
+   - Monitor late event metrics to tune configurations
+
+3. **Resource Considerations**
+   - Larger windows require more state storage
+   - More overlapping windows (in sliding windows) increase computation overhead
+   - Consider using count windows for predictable resource usage
+
+4. **Time Characteristic Selection**
+   - Use processing time when real-time processing is more important than accuracy
+   - Use event time when accurate time-based analysis is required
+   - Consider network delays and clock synchronization when using event time 
