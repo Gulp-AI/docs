@@ -33,15 +33,14 @@
         "configuration/connectors",
         "configuration/windowing",
         "configuration/aggregations",
-        "configuration/state"
+        "configuration/state-management"
       ]
     },
     {
       "group": "Cloud Connectors",
       "pages": [
         "cloud-connectors/aws",
-        "cloud-connectors/gcp",
-        "cloud-connectors/azure"
+        "cloud-connectors/gcp"
       ]
     },
     {
