@@ -26,15 +26,18 @@
       "group": "Configuration",
       "pages": [
         "configuration/basic-structure",
-        "configuration/connectors",
+        "configuration/schema-validation",
+        "configuration/transformations",
         "configuration/windowing",
-        "configuration/aggregations",
-        "configuration/state-management"
+        "configuration/connectors",
+        "configuration/state-management",
+        "configuration/performance"
       ]
     },
     {
-      "group": "Sources and Sinks",
+      "group": "Cloud Integration",
       "pages": [
+        "cloud-integration/overview",
         "cloud-connectors/aws",
         "cloud-connectors/gcp"
       ]

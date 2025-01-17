@@ -1,211 +1,202 @@
 ---
-title: "Window Configuration"
-description: "Detailed guide on configuring windows and event time processing in Gulp"
+title: "Advanced Window Operations"
+description: "Comprehensive guide to window operations and aggregations in Gulp"
 ---
 
-# Window Configuration
+# Window Operations
 
-Gulp supports various types of windows for stream processing, with sophisticated event time processing and watermark handling.
-
-## Event Time Processing
-
-### Watermarks
-
-Watermarks are Gulp's mechanism for tracking event time and handling out-of-order events. A watermark with timestamp T indicates that all events with timestamps less than T have been observed (allowing for some lateness).
-
-```yaml
-watermark:
-  timeCharacteristic: "EVENT_TIME"
-  timestampField: "timestamp"
-  maxOutOfOrderness: 500  # milliseconds
-  idleTimeout: "5 minutes"  # optional
-  watermarkAlignment:  # optional
-    group: "region-1"
-    maxAllowedWatermarkDrift: 1000
-```
-
-Configuration options:
-- `timeCharacteristic`: Either "EVENT_TIME" or "PROCESSING_TIME"
-- `timestampField`: Field containing event timestamps (required for EVENT_TIME)
-- `maxOutOfOrderness`: Maximum time (in milliseconds) that events can arrive late
-- `idleTimeout`: Duration after which an idle source will not hold back watermarks
-- `watermarkAlignment`: Optional configuration for coordinating watermarks across sources
-
-### Late Events Handling
-
-Late events are those arriving after their window's watermark has passed. Gulp provides several mechanisms to handle them:
-
-```yaml
-window:
-  type: "TUMBLING"
-  size: 5
-  timeUnit: "MINUTES"
-  allowedLateness: 1  # same unit as size
-  lateEventsOutputTag: "late-events"  # optional, for side output
-```
-
-The `allowedLateness` parameter defines how long after the watermark a window will continue accepting late events. If not specified, it defaults to the `maxOutOfOrderness` from the watermark configuration.
+Gulp provides powerful window operation capabilities that allow you to process data streams in discrete time or count-based chunks. This guide covers all window types and their configurations.
 
 ## Window Types
 
-### Tumbling Windows
+### 1. Tumbling Windows
 
-Fixed-size, non-overlapping time windows. Each event belongs to exactly one window.
-
-```yaml
-window:
-  type: "TUMBLING"
-  size: 5
-  timeUnit: "MINUTES"
-  allowedLateness: 1  # optional
-```
-
-Implementation details:
-- Uses `TumblingEventTimeWindows` or `TumblingProcessingTimeWindows`
-- Windows are aligned to the epoch (e.g., 5-minute windows start at :00, :05, :10, etc.)
-- Memory efficient as no overlap between windows
-
-### Sliding Windows
-
-Fixed-size windows that slide by a specified interval, allowing events to belong to multiple windows.
+Tumbling windows group records into fixed-size, non-overlapping windows:
 
 ```yaml
-window:
-  type: "SLIDING"
-  size: 10
-  slideSize: 5
-  timeUnit: "MINUTES"
-  allowedLateness: 1  # optional
+transformations:
+  - id: "hourlyStats"
+    type: "window"
+    input: "sourceStream"
+    windowConfig:
+      windowType: "tumbling"
+      windowSize: 3600  # 1 hour in seconds
+      timeUnit: "SECONDS"
+      aggregateRules:
+        - name: "totalValue"
+          field: "value"
+          operation: "sum"
+          fieldType: "double"
 ```
 
-Implementation details:
-- Uses `SlidingEventTimeWindows` or `SlidingProcessingTimeWindows`
-- Higher memory usage due to events being in multiple windows
-- Slide size must be smaller than or equal to window size
+### 2. Sliding Windows
 
-### Session Windows
-
-Dynamic windows that group events based on activity periods, with windows being merged if they're within the inactivity gap.
+Sliding windows allow overlap between windows:
 
 ```yaml
-window:
-  type: "SESSION"
-  inactivityTimeout: 30
-  timeUnit: "MINUTES"
-  maxElementsPerWindow: 1000  # optional
-  allowedLateness: 5  # optional, recommended to be at least 2x inactivityTimeout
+transformations:
+  - id: "movingAverage"
+    type: "window"
+    input: "sourceStream"
+    windowConfig:
+      windowType: "sliding"
+      windowSize: 300  # 5 minutes
+      slideSize: 60    # Slide every minute
+      timeUnit: "SECONDS"
+      aggregateRules:
+        - name: "avgValue"
+          field: "value"
+          operation: "avg"
+          fieldType: "double"
 ```
 
-Implementation details:
-- Uses `EventTimeSessionWindows` or `ProcessingTimeSessionWindows`
-- Dynamically merges windows when events arrive within `inactivityTimeout`
-- Requires careful watermark configuration for proper merging
-- `allowedLateness` should be at least twice the `inactivityTimeout` to ensure proper merging
+### 3. Session Windows
 
-### Count Windows
-
-Windows based on the number of events rather than time.
-
-#### Tumbling Count Windows
-```yaml
-window:
-  type: "TUMBLING_COUNT"
-  size: 100  # number of elements
-```
-
-#### Sliding Count Windows
-```yaml
-window:
-  type: "SLIDING_COUNT"
-  size: 100  # window size in elements
-  slideSize: 50  # slide size in elements
-```
-
-Implementation details:
-- Not affected by watermarks or event time
-- Memory efficient for tumbling count windows
-- Sliding count windows keep events in multiple windows
-
-## Time Characteristics
-
-### Processing Time
-
-Uses the system clock of the machine processing the data.
+Session windows group records based on activity periods:
 
 ```yaml
-watermark:
-  timeCharacteristic: "PROCESSING_TIME"
+transformations:
+  - id: "userSessions"
+    type: "window"
+    input: "sourceStream"
+    windowConfig:
+      windowType: "session"
+      inactivityTimeout: 1800  # 30 minutes
+      timeUnit: "SECONDS"
+      maxElementsPerWindow: 10000  # Optional limit
+      aggregateRules:
+        - name: "sessionCount"
+          field: "value"
+          operation: "count"
+          fieldType: "long"
 ```
 
-Technical details:
-- No watermark generation needed
-- Events processed immediately upon arrival
-- Windows triggered based on system clock
-- Non-deterministic results in distributed environments
-- Best for strict latency requirements
+## Advanced Features
 
-### Event Time
+### 1. Multiple Aggregations
 
-Uses timestamps embedded in the events themselves.
+You can perform multiple aggregations in a single window:
 
 ```yaml
-watermark:
-  timeCharacteristic: "EVENT_TIME"
-  timestampField: "timestamp"
-  maxOutOfOrderness: 500  # milliseconds
+windowConfig:
+  windowType: "tumbling"
+  windowSize: 3600
+  timeUnit: "SECONDS"
+  aggregateRules:
+    - name: "totalValue"
+      field: "value"
+      operation: "sum"
+      fieldType: "double"
+    - name: "avgValue"
+      field: "value"
+      operation: "avg"
+      fieldType: "double"
+    - name: "uniqueUsers"
+      field: "userId"
+      operation: "distinct_count"
+      fieldType: "long"
 ```
 
-Technical details:
-- Watermarks generated based on observed timestamps
-- Events can arrive out of order within `maxOutOfOrderness`
-- Windows triggered based on watermark progression
-- Deterministic results regardless of processing order
-- Higher latency due to waiting for late events
+### 2. Key-Based Windows
 
-## Fault Tolerance
+Group windows by specific fields:
 
-Gulp's windowing system is fault-tolerant through Flink's checkpointing mechanism:
+```yaml
+transformations:
+  - id: "userStats"
+    type: "window"
+    input: "sourceStream"
+    keyBy:
+      fields: ["userId", "category"]
+    windowConfig:
+      windowType: "tumbling"
+      windowSize: 3600
+      timeUnit: "SECONDS"
+      aggregateRules:
+        - name: "userTotal"
+          field: "value"
+          operation: "sum"
+          fieldType: "double"
+```
 
-- Window states are checkpointed regularly
-- On failure, windows are restored from the last checkpoint
-- Late events are properly handled after recovery
-- Window merging (for session windows) is preserved across restarts
+### 3. Late Event Handling
+
+Configure how to handle late-arriving events:
+
+```yaml
+windowConfig:
+  windowType: "tumbling"
+  windowSize: 3600
+  timeUnit: "SECONDS"
+  allowedLateness: 300  # Allow events up to 5 minutes late
+  lateEventOutput: "lateEvents"  # Optional side output for late events
+  aggregateRules:
+    - name: "totalValue"
+      field: "value"
+      operation: "sum"
+      fieldType: "double"
+```
+
+## Supported Aggregations
+
+| Operation | Description | Supported Types |
+|:----------|:------------|:---------------|
+| `sum` | Sum of values | numeric types |
+| `avg` | Average of values | numeric types |
+| `min` | Minimum value | numeric types |
+| `max` | Maximum value | numeric types |
+| `count` | Count of records | any type |
+| `distinct_count` | Count of unique values | any type |
+| `first` | First value in window | any type |
+| `last` | Last value in window | any type |
 
 ## Performance Considerations
 
-1. **Memory Usage**
-   - Tumbling windows: O(N) where N is events per window
-   - Sliding windows: O(N * W/S) where W is window size and S is slide size
-   - Session windows: O(N * M) where M is average number of active sessions
+1. **Memory Usage**: 
+   - Window state is kept in memory/state backend
+   - Consider time vs count-based windows based on data rate
+   - Monitor state size for large windows
 
-2. **Watermark Propagation**
-   - Watermarks flow through the entire pipeline
-   - Sources can align watermarks for consistency
-   - Idle sources can be configured to not hold back watermarks
+2. **Parallelism**:
+   - Windows can be processed in parallel when using `keyBy`
+   - Choose keys that provide good distribution
+   - Monitor key cardinality to avoid hotspots
 
-3. **Late Event Handling**
-   - Higher `allowedLateness` increases state size
-   - Consider using side outputs for very late events
-   - Session windows require larger `allowedLateness` for proper merging
+3. **Watermark Strategy**:
+   - Configure appropriate watermark interval
+   - Balance latency vs completeness
+   - Monitor late events ratio
 
-## Best Practices
+## Error Handling
 
-1. **Window Size Selection**
-   - Choose based on business requirements and data characteristics
-   - Consider data arrival patterns and rate
-   - Balance between result accuracy and resource usage
+Handle window processing errors with:
 
-2. **Watermark Configuration**
-   - Set `maxOutOfOrderness` based on observed data patterns
-   - Monitor late event metrics to tune configuration
-   - Use watermark alignment for multiple sources
+```yaml
+windowConfig:
+  errorHandling:
+    onLateEvent: "drop"  # or "side_output" or "include"
+    onProcessingError: "skip"  # or "fail" or "retry"
+    maxRetries: 3
+    retryBackoff: 1000  # milliseconds
+```
 
-3. **Late Event Handling**
-   - Configure appropriate `allowedLateness`
-   - Use side outputs for very late events
-   - Consider larger values for session windows
+## Monitoring
 
-4. **Resource Optimization**
-   - Use tumbling windows when possible
-   - Minimize window state with appropriate sizing
-   - Configure checkpointing based on window sizes 
+Key metrics to monitor:
+
+1. Window Processing:
+   - Late events count
+   - Processing time per window
+   - Number of records per window
+
+2. State:
+   - Window state size
+   - Checkpoint duration
+   - Recovery time
+
+3. Resources:
+   - Memory usage
+   - GC pressure
+   - Network usage
+
+Configure alerts for these metrics using the monitoring section in your job configuration. 

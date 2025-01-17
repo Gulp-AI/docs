@@ -1,128 +1,311 @@
 ---
-title: "Sources and Sinks"
-description: "Overview of data sources and sinks in Gulp"
+title: "Connectors"
+description: "Comprehensive guide to source and sink connectors in Gulp"
 ---
 
-# Sources and Sinks
+# Connectors
 
-Gulp supports a variety of cloud-native sources and sinks, with built-in optimizations and best practices for each service.
+Gulp provides a rich set of connectors for integrating with various data sources and sinks. This guide covers all available connectors and their configurations.
 
-## Overview
+## Source Connectors
 
-Sources and sinks in Gulp are configured using a consistent YAML structure:
+### 1. Kafka Source
+
+Connect to Apache Kafka topics:
 
 ```yaml
-source:
-  type: "service-type"
-  config:
-    # Service-specific configuration
-    
-sink:
-  type: "service-type"
-  config:
-    # Service-specific configuration
+sources:
+  - id: "kafkaSource"
+    type: "kafka"
+    name: "Kafka Input Stream"
+    config:
+      bootstrapServers: "kafka1:9092,kafka2:9092"
+      topic: "input-topic"
+      groupId: "gulp-consumer-group"
+      startingOffsets: "earliest"  # earliest, latest, or timestamp
+      consumerProperties:
+        "security.protocol": "SASL_SSL"
+        "sasl.mechanism": "PLAIN"
+      deserializationSchema:
+        type: "json"  # json, avro, or custom
+    schema:
+      type: "object"
+      properties:
+        userId:
+          type: "string"
+        timestamp:
+          type: "number"
+        value:
+          type: "double"
 ```
 
-## Supported Services
+### 2. Mock Source
 
-### AWS Services
-For detailed AWS service configurations, see [AWS Integration](/cloud-connectors/aws):
+Useful for testing and development:
 
-- **Sources**
-  - Amazon Kinesis
-  - Amazon MSK (Managed Streaming for Kafka)
-  - Amazon S3
-  - Amazon DynamoDB Streams
-  - Amazon Redshift
+```yaml
+sources:
+  - id: "mockSource"
+    type: "mock"
+    name: "Mock Data Generator"
+    config:
+      emitInterval: 1000  # milliseconds
+      generatorConfig:
+        type: "random"  # random, sequence, or custom
+        fields:
+          - name: "userId"
+            type: "string"
+            pattern: "user-[0-9]{5}"
+          - name: "value"
+            type: "double"
+            min: 0.0
+            max: 100.0
+    schema:
+      type: "object"
+      properties:
+        userId:
+          type: "string"
+        value:
+          type: "double"
+```
 
-- **Sinks**
-  - Amazon Kinesis
-  - Amazon MSK
-  - Amazon S3
-  - Amazon Redshift
-  - Amazon OpenSearch
+## Sink Connectors
 
-### GCP Services
-For detailed GCP service configurations, see [GCP Integration](/cloud-connectors/gcp):
+### 1. Kafka Sink
 
-- **Sources**
-  - Google Cloud Storage (GCS)
-  - Google Cloud Pub/Sub
-  - BigQuery
-  - Cloud Spanner
+Write to Apache Kafka topics:
 
-- **Sinks**
-  - Google Cloud Storage (GCS)
-  - Google Cloud Pub/Sub
-  - BigQuery
-  - Cloud Spanner
+```yaml
+sinks:
+  - id: "kafkaSink"
+    type: "kafka"
+    name: "Kafka Output Stream"
+    input: "transformedStream"
+    config:
+      bootstrapServers: "kafka1:9092,kafka2:9092"
+      topic: "output-topic"
+      producerProperties:
+        compression.type: "snappy"
+        batch.size: 16384
+        linger.ms: 5
+      serializationSchema:
+        type: "json"
+        prettyPrint: false
+      deliveryGuarantee: "exactly_once"  # exactly_once, at_least_once
+```
 
-## Common Configuration Patterns
+### 2. Print Sink
 
-### Schema Configuration
+Useful for debugging and development:
+
+```yaml
+sinks:
+  - id: "printSink"
+    type: "print"
+    name: "Console Output"
+    input: "processedStream"
+    config:
+      prefix: "[GULP] "
+      includeTimestamp: true
+      outputMode: "append"  # append, complete, update
+```
+
+## Common Configuration
+
+### 1. Schema Definition
+
 All sources require a schema definition:
 
 ```yaml
-source:
-  type: "service-type"
-  schema:
-    type: "object"
-    properties:
-      timestamp:
-        type: "long"
-        format: "unix-timestamp"
-      data:
-        type: "object"
+schema:
+  type: "object"
+  properties:
+    field1:
+      type: "string"
+      description: "Field description"
+    field2:
+      type: "integer"
+      minimum: 0
+      maximum: 100
+    field3:
+      type: "object"
+      properties:
+        nested1:
+          type: "string"
+        nested2:
+          type: "number"
+  required: ["field1", "field2"]
 ```
 
-### Watermark Configuration
-For event-time processing:
+### 2. Error Handling
+
+Configure error handling for connectors:
 
 ```yaml
-source:
-  type: "service-type"
-  watermark:
-    timestampField: "event_time"
-    maxOutOfOrderness: "5s"
-```
-
-### Monitoring Configuration
-Enable monitoring for sources and sinks:
-
-```yaml
-source:
-  type: "service-type"
-  monitoring:
+errorHandling:
+  retryStrategy:
+    maxAttempts: 3
+    backoffMultiplier: 2
+    initialBackoff: "1s"
+  deadLetterQueue:
     enabled: true
-    metrics: ["latency", "throughput", "errors"]
+    topic: "error-records"
+  errorOutputs:
+    - name: "validationErrors"
+      condition: "error.type == 'validation'"
+    - name: "connectionErrors"
+      condition: "error.type == 'connection'"
 ```
 
-### Fault Tolerance
-Configure delivery guarantees and error handling:
+## Performance Tuning
+
+### 1. Kafka Source Tuning
 
 ```yaml
-sink:
-  type: "service-type"
-  config:
-    delivery: "exactly_once"
-    retries: 3
-    backoff:
-      type: "exponential"
-      initial: "100ms"
-      maximum: "10s"
+sources:
+  - id: "optimizedKafkaSource"
+    type: "kafka"
+    config:
+      fetchMinBytes: 1048576  # 1MB
+      fetchMaxWaitMs: 500
+      maxPartitionFetchBytes: 5242880  # 5MB
+      receiveBufferBytes: 1048576  # 1MB
+      maxPollRecords: 500
+      consumerProperties:
+        isolation.level: "read_committed"
 ```
 
-## Best Practices
+### 2. Kafka Sink Tuning
 
-1. **Schema Validation**: Always define schemas for your sources to ensure data quality
-2. **Monitoring**: Enable monitoring for production deployments
-3. **Watermarks**: Configure appropriate watermarks for event-time processing
-4. **Batching**: Optimize batch sizes for your specific use case
-5. **Error Handling**: Configure appropriate retry policies and error thresholds
+```yaml
+sinks:
+  - id: "optimizedKafkaSink"
+    type: "kafka"
+    config:
+      batchSize: 16384
+      lingerMs: 5
+      compressionType: "snappy"
+      maxInFlightRequests: 5
+      retries: 3
+      enableIdempotence: true
+      maxRequestSize: 1048576  # 1MB
+```
 
-For detailed configuration examples, refer to:
-- [AWS Integration](/cloud-connectors/aws)
-- [GCP Integration](/cloud-connectors/gcp)
-- [Basic Streaming Example](/examples/basic-streaming)
-- [Window Analytics Example](/examples/window-analytics)
-- [Session Analytics Example](/examples/complex-events) 
+## Monitoring
+
+### 1. Metrics Configuration
+
+```yaml
+monitoring:
+  metrics:
+    - name: "recordsProcessed"
+      type: "counter"
+      labels: ["connector", "type"]
+    - name: "processingLatency"
+      type: "histogram"
+      labels: ["connector"]
+    - name: "bytesProcessed"
+      type: "meter"
+      labels: ["connector"]
+```
+
+### 2. Health Checks
+
+```yaml
+healthChecks:
+  - name: "kafkaConnectivity"
+    type: "connection"
+    target: "kafka"
+    interval: "30s"
+    timeout: "5s"
+  - name: "recordProcessing"
+    type: "throughput"
+    minimum: 100  # records/second
+    window: "5m"
+```
+
+## Testing
+
+### 1. Mock Source Configuration
+
+```yaml
+testConfig:
+  mockSources:
+    - id: "testSource"
+      schema:
+        type: "object"
+        properties:
+          message:
+            type: "string"
+          count:
+            type: "integer"
+          price:
+            type: "number"
+          active:
+            type: "boolean"
+      data:
+        - message: "test1"
+          count: 1
+          price: 10.5
+          active: true
+        - message: "test2"
+          count: 2
+          price: 20.5
+          active: false
+```
+
+### 2. Validation Tests
+
+```yaml
+testConfig:
+  validationTests:
+    - name: "KafkaConnectorTest"
+      source:
+        type: "kafka"
+        config:
+          bootstrapServers: "localhost:9092"
+          topic: "test-topic"
+      expectations:
+        - recordCount: 100
+        - processingTime: "5s"
+        - errorRate: 0.0
+```
+
+## Security
+
+### 1. Authentication
+
+```yaml
+security:
+  authentication:
+    type: "sasl"
+    mechanism: "PLAIN"
+    username: "${KAFKA_USERNAME}"
+    password: "${KAFKA_PASSWORD}"
+    
+  encryption:
+    enabled: true
+    protocol: "TLS"
+    truststore:
+      path: "/path/to/truststore.jks"
+      password: "${TRUSTSTORE_PASSWORD}"
+    keystore:
+      path: "/path/to/keystore.jks"
+      password: "${KEYSTORE_PASSWORD}"
+```
+
+### 2. Authorization
+
+```yaml
+security:
+  authorization:
+    acls:
+      - principal: "User:${KAFKA_USERNAME}"
+        resources:
+          - type: "topic"
+            pattern: "input-*"
+            operations: ["READ"]
+          - type: "topic"
+            pattern: "output-*"
+            operations: ["WRITE"]
+``` 
