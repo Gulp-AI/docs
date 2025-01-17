@@ -1,146 +1,137 @@
 ---
-title: "Complex Event Processing"
-description: "Implementing complex event processing patterns with Gulp"
+title: "Session Analytics"
+description: "Implementing session window analytics with Gulp"
 ---
 
-# Complex Event Processing
+# Session Window Analytics
 
-This guide demonstrates advanced event processing patterns using Gulp.
+This example demonstrates how to implement session window analytics for user behavior analysis.
 
-## Fraud Detection Example
+## User Behavior Analysis
 
 ```yaml
-name: "Fraud Detection"
+name: "User Behavior Analysis"
 version: "1.0.0"
 
+watermarkConfig:
+  timeCharacteristic: EVENT_TIME
+  timestampField: event_time
+  maxOutOfOrderness: 5000
+
 source:
-  type: "msk"
+  type: "kafka"
   config:
-    bootstrapServers: "${MSK_BOOTSTRAP_SERVERS}"
-    topics: ["transactions"]
-    groupId: "fraud-detector"
-    securityProtocol: "SASL_SSL"
-    saslMechanism: "AWS_MSK_IAM"
+    bootstrapServers: "${KAFKA_BOOTSTRAP_SERVERS}"
+    topics: ["user-events"]
+    groupId: "behavior-analysis"
+    startingOffsets: "latest"
     
 transformations:
-  - name: "Parse Transaction"
+  - name: "Parse Events"
     type: "deserialize"
     format: "json"
-    
-  - name: "Enrich with User Data"
-    type: "lookup"
-    config:
-      source: "dynamodb"
-      table: "user_profiles"
-      key: "user_id"
-      fields: ["risk_score", "usual_locations"]
-      
-  - name: "Transaction Window"
+    schema:
+      type: "object"
+      properties:
+        user_id:
+          type: "string"
+        event_type:
+          type: "string"
+        event_time:
+          type: "long"
+          format: "unix-timestamp"
+        page_id:
+          type: "string"
+        duration:
+          type: "long"
+        
+  - name: "User Session Window"
     type: "window"
-    config:
-      type: "sliding"
-      size: "1h"
-      slide: "1m"
-      key: "user_id"
-      timestamp: "transaction_time"
-      
-  - name: "Fraud Detection Rules"
-    type: "cep"
-    patterns:
-      - name: "High Frequency Trading"
-        within: "5m"
-        match:
-          - condition: "count(*) > 10"
-            
-      - name: "Unusual Location"
-        match:
-          - condition: "location NOT IN usual_locations"
-            
-      - name: "Large Amount"
-        match:
-          - condition: "amount > 10000 AND risk_score > 0.7"
-            
-  - name: "Aggregate Alerts"
-    type: "aggregate"
-    groupBy: ["user_id", "pattern_name"]
-    operations:
-      - name: "alert_count"
-        type: "count"
-      - name: "total_amount"
-        type: "sum"
-        field: "amount"
+    keyByProperties:
+      field: user_id
+    windowConfig:
+      windowType: SESSION
+      inactivityTimeout: 1800  # 30 minutes in seconds
+      timeUnit: SECONDS
+      maxElementsPerWindow: 1000
+      aggregateRules:
+        - name: session_duration
+          field: duration
+          operation: sum
+          fieldType: long
+        - name: unique_pages
+          field: page_id
+          operation: count
+          fieldType: long
+          distinct: true
+        - name: event_count
+          field: event_type
+          operation: count
+          fieldType: long
+        - name: first_page
+          field: page_id
+          operation: first
+          fieldType: string
+        - name: last_page
+          field: page_id
+          operation: last
+          fieldType: string
+        
+  - name: "Session Metrics"
+    type: "map"
+    fields:
+      - name: "avg_time_per_page"
+        value: "session_duration / unique_pages"
+        type: "double"
+      - name: "events_per_page"
+        value: "event_count / unique_pages"
+        type: "double"
+      - name: "session_start"
+        value: "window_start"
+        type: "timestamp"
+      - name: "session_end"
+        value: "window_end"
+        type: "timestamp"
         
 sink:
-  type: "kinesis"
+  type: "bigquery"
   config:
-    stream: "fraud-alerts"
-    region: "us-west-2"
-    partitionKey: "user_id"
-    monitoring:
-      enabled: true
-      metrics: ["latency", "throughput", "errors"]
+    project: "${GCP_PROJECT}"
+    dataset: "analytics"
+    table: "user_sessions"
+    createDisposition: "CREATE_IF_NEEDED"
+    writeDisposition: "WRITE_APPEND"
+    partitioning:
+      type: "time"
+      field: "session_start"
+      expirationMs: 7776000000  # 90 days
+    clustering:
+      fields: ["user_id", "first_page"]
 ```
 
-## Configuration Explanation
+## Configuration Details
+
+### Watermark Configuration
+- Uses event time processing
+- Allows 5 seconds for out-of-order events
+- Based on event_time field
 
 ### Source Configuration
-- Reads from MSK with IAM authentication
-- Processes real-time transactions
-- Secure communication with SASL/SSL
+- Reads from Kafka user events topic
+- Latest offset consumption
+- Event-time based processing
 
 ### Transformations
-1. **Parse Transaction**: JSON deserialization
-2. **User Enrichment**: DynamoDB lookup
-3. **Window**: Sliding window for temporal analysis
-4. **Fraud Detection**: Complex event patterns
-5. **Aggregation**: Alert summarization
+1. **Parse Events**: JSON deserialization with schema validation
+2. **Session Window**: 
+   - 30-minute inactivity gap
+   - Keyed by user_id
+   - Multiple aggregations per session
+3. **Session Metrics**: 
+   - Calculates derived metrics
+   - Preserves window metadata
 
 ### Sink Configuration
-- Real-time alerts to Kinesis
-- Monitoring enabled
-- Partitioned by user_id
-
-## Pattern Details
-
-### High Frequency Trading
-Detects rapid succession of transactions:
-```yaml
-pattern:
-  within: "5m"
-  match:
-    - condition: "count(*) > 10"
-```
-
-### Unusual Location
-Compares transaction location with user profile:
-```yaml
-pattern:
-  match:
-    - condition: "location NOT IN usual_locations"
-```
-
-### Large Amount
-Combines transaction size with risk score:
-```yaml
-pattern:
-  match:
-    - condition: "amount > 10000 AND risk_score > 0.7"
-```
-
-## Running the Example
-
-1. Set up prerequisites:
-   ```bash
-   gulp resources create --file fraud-detection-resources.yaml
-   ```
-
-2. Deploy the job:
-   ```bash
-   gulp deploy fraud-detection.yaml
-   ```
-
-3. Monitor alerts:
-   ```bash
-   gulp jobs logs fraud-detection
-   gulp metrics fraud-detection --pattern="alerts"
-   ``` 
+- Writes to BigQuery
+- Time-partitioned by session start
+- Clustered for efficient user and page queries 

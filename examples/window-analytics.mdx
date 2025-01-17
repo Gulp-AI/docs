@@ -5,13 +5,18 @@ description: "Implementing windowed analytics with Gulp"
 
 # Window Analytics Example
 
-This guide demonstrates how to implement windowed analytics using Gulp.
+This example demonstrates how to implement windowed analytics using Gulp.
 
 ## User Session Analysis
 
 ```yaml
 name: "User Session Analytics"
 version: "1.0.0"
+
+watermarkConfig:
+  timeCharacteristic: EVENT_TIME
+  timestampField: event_time
+  maxOutOfOrderness: 10000  # 10 seconds
 
 source:
   type: "kinesis"
@@ -24,46 +29,65 @@ transformations:
   - name: "Parse Events"
     type: "deserialize"
     format: "json"
-    
-  - name: "Extract Timestamp"
-    type: "map"
-    fields:
-      - name: "event_time"
-        value: "timestamp"
-        type: "timestamp"
+    schema:
+      type: "object"
+      properties:
+        user_id:
+          type: "string"
+        event_time:
+          type: "long"
+          format: "unix-timestamp"
+        product_id:
+          type: "string"
+        category:
+          type: "string"
+        value:
+          type: "double"
         
-  - name: "Session Window"
+  - name: "Product Window"
     type: "window"
-    config:
-      type: "session"
-      gap: "30m"
-      key: "user_id"
-      timestamp: "event_time"
-      
-  - name: "Session Analytics"
-    type: "aggregate"
-    groupBy: ["user_id"]
-    operations:
-      - name: "event_count"
-        type: "count"
-      - name: "session_duration"
-        type: "max_minus_min"
-        field: "event_time"
-      - name: "total_value"
-        type: "sum"
-        field: "transaction_value"
+    keyByProperties:
+      field: "category"
+    windowConfig:
+      windowType: SLIDING
+      size: 3600  # 1 hour in seconds
+      slide: 60   # 1 minute in seconds
+      timeUnit: SECONDS
+      maxElementsPerWindow: 10000
+      aggregateRules:
+        - name: total_value
+          field: value
+          operation: sum
+          fieldType: double
+        - name: avg_value
+          field: value
+          operation: avg
+          fieldType: double
+        - name: unique_products
+          field: product_id
+          operation: count
+          fieldType: long
+          distinct: true
+        - name: unique_users
+          field: user_id
+          operation: count
+          fieldType: long
+          distinct: true
         
 sink:
   type: "s3"
   config:
     bucket: "analytics-results"
-    path: "session-analytics"
+    path: "product-analytics"
     format: "parquet"
     partitioning:
       - field: "year"
         extractFromTimestamp: "window_end"
       - field: "month"
         extractFromTimestamp: "window_end"
+      - field: "day"
+        extractFromTimestamp: "window_end"
+    compression: "snappy"
 ```
 
 ## Configuration Explanation
@@ -71,32 +95,16 @@ sink:
 ### Source Configuration
 - Reads user events from Kinesis
 - Configures for real-time processing
-- Handles late-arriving data
+- Handles late-arriving data with watermarks
 
 ### Transformations
-1. **Parse Events**: JSON deserialization
-2. **Timestamp Extraction**: For windowing
-3. **Session Window**: Groups events by user sessions
-4. **Analytics**: Computes session metrics
+1. **Parse Events**: JSON deserialization with schema validation
+2. **Product Window**: 
+   - 1-hour sliding windows with 1-minute slides
+   - Keyed by product category
+   - Multiple aggregations per window
 
 ### Sink Configuration
 - Writes to S3 in Parquet format
 - Time-based partitioning
-- Optimized for analytics queries
-
-## Running the Example
-
-1. Create required resources:
-   ```bash
-   gulp resources create --file session-analytics-resources.yaml
-   ```
-
-2. Deploy the job:
-   ```bash
-   gulp deploy window-analytics.yaml
-   ```
-
-3. Monitor session analytics:
-   ```bash
-   gulp jobs metrics window-analytics
-   ``` 
+- Optimized for analytics queries 
