@@ -1,179 +1,211 @@
 ---
 title: "Window Configuration"
-description: "Detailed guide on configuring windows in Gulp"
+description: "Detailed guide on configuring windows and event time processing in Gulp"
 ---
 
 # Window Configuration
 
-Gulp supports various types of windows for stream processing. Each window type has its own configuration options and is designed for specific use cases.
+Gulp supports various types of windows for stream processing, with sophisticated event time processing and watermark handling.
+
+## Event Time Processing
+
+### Watermarks
+
+Watermarks are Gulp's mechanism for tracking event time and handling out-of-order events. A watermark with timestamp T indicates that all events with timestamps less than T have been observed (allowing for some lateness).
+
+```yaml
+watermark:
+  timeCharacteristic: "EVENT_TIME"
+  timestampField: "timestamp"
+  maxOutOfOrderness: 500  # milliseconds
+  idleTimeout: "5 minutes"  # optional
+  watermarkAlignment:  # optional
+    group: "region-1"
+    maxAllowedWatermarkDrift: 1000
+```
+
+Configuration options:
+- `timeCharacteristic`: Either "EVENT_TIME" or "PROCESSING_TIME"
+- `timestampField`: Field containing event timestamps (required for EVENT_TIME)
+- `maxOutOfOrderness`: Maximum time (in milliseconds) that events can arrive late
+- `idleTimeout`: Duration after which an idle source will not hold back watermarks
+- `watermarkAlignment`: Optional configuration for coordinating watermarks across sources
+
+### Late Events Handling
+
+Late events are those arriving after their window's watermark has passed. Gulp provides several mechanisms to handle them:
+
+```yaml
+window:
+  type: "TUMBLING"
+  size: 5
+  timeUnit: "MINUTES"
+  allowedLateness: 1  # same unit as size
+  lateEventsOutputTag: "late-events"  # optional, for side output
+```
+
+The `allowedLateness` parameter defines how long after the watermark a window will continue accepting late events. If not specified, it defaults to the `maxOutOfOrderness` from the watermark configuration.
 
 ## Window Types
 
 ### Tumbling Windows
 
-Tumbling windows group elements into fixed-size, non-overlapping time windows. Each element belongs to exactly one window.
+Fixed-size, non-overlapping time windows. Each event belongs to exactly one window.
 
 ```yaml
 window:
-  type: TUMBLING
+  type: "TUMBLING"
   size: 5
-  timeUnit: MINUTES
-  allowedLateness: 1 # optional, in same time unit as size
+  timeUnit: "MINUTES"
+  allowedLateness: 1  # optional
 ```
 
-Use cases:
-- Computing statistics over fixed time intervals
-- Periodic data aggregation
-- Batch-like processing within streaming
+Implementation details:
+- Uses `TumblingEventTimeWindows` or `TumblingProcessingTimeWindows`
+- Windows are aligned to the epoch (e.g., 5-minute windows start at :00, :05, :10, etc.)
+- Memory efficient as no overlap between windows
 
 ### Sliding Windows
 
-Sliding windows group elements into fixed-size windows that can overlap. Elements can belong to multiple windows.
+Fixed-size windows that slide by a specified interval, allowing events to belong to multiple windows.
 
 ```yaml
 window:
-  type: SLIDING
+  type: "SLIDING"
   size: 10
   slideSize: 5
-  timeUnit: MINUTES
-  allowedLateness: 1 # optional, in same time unit as size
+  timeUnit: "MINUTES"
+  allowedLateness: 1  # optional
 ```
 
-Use cases:
-- Moving averages
-- Trend detection
-- Continuous monitoring with overlapping periods
+Implementation details:
+- Uses `SlidingEventTimeWindows` or `SlidingProcessingTimeWindows`
+- Higher memory usage due to events being in multiple windows
+- Slide size must be smaller than or equal to window size
 
 ### Session Windows
 
-Session windows group elements based on activity periods. Windows are created when events arrive and are merged if they're within the inactivity gap.
+Dynamic windows that group events based on activity periods, with windows being merged if they're within the inactivity gap.
 
 ```yaml
 window:
-  type: SESSION
+  type: "SESSION"
   inactivityTimeout: 30
-  timeUnit: MINUTES
-  maxElementsPerWindow: 1000 # optional
-  allowedLateness: 5 # optional, in same time unit as inactivityTimeout
+  timeUnit: "MINUTES"
+  maxElementsPerWindow: 1000  # optional
+  allowedLateness: 5  # optional, recommended to be at least 2x inactivityTimeout
 ```
 
-Use cases:
-- User session analysis
-- Activity-based grouping
-- Event pattern detection with variable time gaps
+Implementation details:
+- Uses `EventTimeSessionWindows` or `ProcessingTimeSessionWindows`
+- Dynamically merges windows when events arrive within `inactivityTimeout`
+- Requires careful watermark configuration for proper merging
+- `allowedLateness` should be at least twice the `inactivityTimeout` to ensure proper merging
 
 ### Count Windows
 
-Count-based windows group elements based on the number of events rather than time.
+Windows based on the number of events rather than time.
 
 #### Tumbling Count Windows
-
 ```yaml
 window:
-  type: TUMBLING_COUNT
-  size: 100 # number of elements per window
+  type: "TUMBLING_COUNT"
+  size: 100  # number of elements
 ```
 
 #### Sliding Count Windows
-
 ```yaml
 window:
-  type: SLIDING_COUNT
-  size: 100 # window size in number of elements
-  slideSize: 50 # slide size in number of elements
+  type: "SLIDING_COUNT"
+  size: 100  # window size in elements
+  slideSize: 50  # slide size in elements
 ```
 
-Use cases:
-- Fixed-size batch processing
-- Sample-based analysis
-- Event-count-based processing
+Implementation details:
+- Not affected by watermarks or event time
+- Memory efficient for tumbling count windows
+- Sliding count windows keep events in multiple windows
 
 ## Time Characteristics
 
-Windows can operate in two time modes:
-
 ### Processing Time
 
-Processing time refers to the system time of the machine processing the data.
+Uses the system clock of the machine processing the data.
 
 ```yaml
 watermark:
-  timeCharacteristic: PROCESSING_TIME
+  timeCharacteristic: "PROCESSING_TIME"
 ```
 
-Advantages:
-- Simpler to reason about
-- Lower latency
-- No need for event timestamps
-
-Disadvantages:
-- Non-deterministic results
-- Less accurate for distributed systems
+Technical details:
+- No watermark generation needed
+- Events processed immediately upon arrival
+- Windows triggered based on system clock
+- Non-deterministic results in distributed environments
+- Best for strict latency requirements
 
 ### Event Time
 
-Event time uses the timestamps embedded in the events themselves.
+Uses timestamps embedded in the events themselves.
 
 ```yaml
 watermark:
-  timeCharacteristic: EVENT_TIME
+  timeCharacteristic: "EVENT_TIME"
   timestampField: "timestamp"
-  maxOutOfOrderness: 500 # milliseconds
+  maxOutOfOrderness: 500  # milliseconds
 ```
 
-Advantages:
-- Deterministic results
-- Accurate for out-of-order events
-- Better for distributed systems
+Technical details:
+- Watermarks generated based on observed timestamps
+- Events can arrive out of order within `maxOutOfOrderness`
+- Windows triggered based on watermark progression
+- Deterministic results regardless of processing order
+- Higher latency due to waiting for late events
 
-Disadvantages:
-- Higher latency due to watermark propagation
-- More complex configuration
-- Requires timestamp field in events
+## Fault Tolerance
 
-## Configuration Options
+Gulp's windowing system is fault-tolerant through Flink's checkpointing mechanism:
 
-### Common Options
+- Window states are checkpointed regularly
+- On failure, windows are restored from the last checkpoint
+- Late events are properly handled after recovery
+- Window merging (for session windows) is preserved across restarts
 
-| Option | Description | Required | Default |
-|--------|-------------|----------|----------|
-| type | Window type (TUMBLING, SLIDING, SESSION, TUMBLING_COUNT, SLIDING_COUNT) | Yes | - |
-| timeUnit | Time unit for size and slide (SECONDS, MINUTES, HOURS, DAYS) | Yes for time-based windows | - |
-| allowedLateness | How long to wait for late events | No | maxOutOfOrderness from watermark config |
+## Performance Considerations
 
-### Time-Based Window Options
+1. **Memory Usage**
+   - Tumbling windows: O(N) where N is events per window
+   - Sliding windows: O(N * W/S) where W is window size and S is slide size
+   - Session windows: O(N * M) where M is average number of active sessions
 
-| Option | Description | Required | Default |
-|--------|-------------|----------|----------|
-| size | Window size in timeUnit | Yes | - |
-| slideSize | Slide interval for SLIDING windows | Yes for SLIDING | - |
-| inactivityTimeout | Session gap for SESSION windows | Yes for SESSION | - |
+2. **Watermark Propagation**
+   - Watermarks flow through the entire pipeline
+   - Sources can align watermarks for consistency
+   - Idle sources can be configured to not hold back watermarks
 
-### Count-Based Window Options
-
-| Option | Description | Required | Default |
-|--------|-------------|----------|----------|
-| size | Number of elements per window | Yes | - |
-| slideSize | Number of elements to slide | Yes for SLIDING_COUNT | - |
+3. **Late Event Handling**
+   - Higher `allowedLateness` increases state size
+   - Consider using side outputs for very late events
+   - Session windows require larger `allowedLateness` for proper merging
 
 ## Best Practices
 
 1. **Window Size Selection**
-   - Choose window sizes based on your use case requirements
-   - Consider data arrival rates and processing requirements
-   - Smaller windows provide lower latency but may increase processing overhead
+   - Choose based on business requirements and data characteristics
+   - Consider data arrival patterns and rate
+   - Balance between result accuracy and resource usage
 
-2. **Late Event Handling**
-   - Set appropriate allowedLateness based on your data characteristics
-   - Consider using a larger allowedLateness for session windows to ensure proper merging
-   - Monitor late event metrics to tune configurations
+2. **Watermark Configuration**
+   - Set `maxOutOfOrderness` based on observed data patterns
+   - Monitor late event metrics to tune configuration
+   - Use watermark alignment for multiple sources
 
-3. **Resource Considerations**
-   - Larger windows require more state storage
-   - More overlapping windows (in sliding windows) increase computation overhead
-   - Consider using count windows for predictable resource usage
+3. **Late Event Handling**
+   - Configure appropriate `allowedLateness`
+   - Use side outputs for very late events
+   - Consider larger values for session windows
 
-4. **Time Characteristic Selection**
-   - Use processing time when real-time processing is more important than accuracy
-   - Use event time when accurate time-based analysis is required
-   - Consider network delays and clock synchronization when using event time 
+4. **Resource Optimization**
+   - Use tumbling windows when possible
+   - Minimize window state with appropriate sizing
+   - Configure checkpointing based on window sizes 

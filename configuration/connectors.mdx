@@ -1,0 +1,285 @@
+---
+title: "Source and Sink Configuration"
+description: "Detailed guide on configuring data sources and sinks in Gulp"
+---
+
+# Source and Sink Configuration
+
+Gulp provides a flexible connector system for reading from various data sources and writing to different destinations.
+
+## Sources
+
+Sources define where your streaming data comes from. Each source must have a unique ID and a schema defining the data structure.
+
+### Kafka Source
+
+Apache Kafka is a distributed streaming platform that can handle high-throughput data streams.
+
+```yaml
+sources:
+  - id: "orders-stream"
+    name: "Customer Orders"
+    type: "kafka"
+    config:
+      bootstrapServers: "kafka:9092"
+      topic: "orders"
+      groupId: "order-processor"
+      startingOffsets: "earliest"  # earliest, latest
+      
+      # Security Configuration (optional)
+      securityProtocol: "SASL_SSL"
+      saslMechanism: "PLAIN"
+      saslUsername: "${KAFKA_USERNAME}"
+      saslPassword: "${KAFKA_PASSWORD}"
+      
+      # Consumer Configuration
+      fetchMinBytes: 1
+      fetchMaxWaitMs: 500
+      maxPartitionFetchBytes: 1048576  # 1MB
+      
+      # Performance Tuning
+      autoCommitIntervalMs: 5000
+      heartbeatIntervalMs: 3000
+      sessionTimeoutMs: 45000
+      
+    schema:
+      type: "object"
+      properties:
+        orderId:
+          type: "string"
+        timestamp:
+          type: "number"
+          format: "unix-timestamp"
+        amount:
+          type: "number"
+          format: "double"
+        customerId:
+          type: "string"
+```
+
+### Amazon MSK (Managed Streaming for Kafka)
+
+```yaml
+sources:
+  - id: "msk-stream"
+    name: "MSK Events"
+    type: "kafka"
+    config:
+      bootstrapServers: "${MSK_BOOTSTRAP_SERVERS}"
+      topic: "events"
+      groupId: "event-processor"
+      
+      # AWS MSK IAM Authentication
+      securityProtocol: "SASL_SSL"
+      saslMechanism: "AWS_MSK_IAM"
+      
+      # Consumer Configuration
+      isolationLevel: "read_committed"
+      maxPollRecords: 500
+      
+    schema:
+      type: "object"
+      properties:
+        eventId:
+          type: "string"
+        data:
+          type: "object"
+```
+
+## Sinks
+
+Sinks define where your processed data should be written. Each sink must specify its input stream and configuration.
+
+### Kafka Sink
+
+```yaml
+sinks:
+  - id: "processed-orders"
+    name: "Processed Orders Output"
+    type: "kafka"
+    input: "enriched-orders"  # ID of the input stream
+    config:
+      bootstrapServers: "kafka:9092"
+      topic: "processed-orders"
+      
+      # Producer Configuration
+      deliveryGuarantee: "exactly_once"  # exactly_once, at_least_once
+      transactionTimeoutMs: 900000  # 15 minutes
+      
+      # Performance Tuning
+      batchSize: 16384  # Size in bytes
+      linger.ms: 50  # Artificial delay for batching
+      compression.type: "snappy"  # none, gzip, snappy, lz4, zstd
+      bufferMemory: 33554432  # 32MB
+      
+      # Schema Configuration
+      keySerializationSchema:
+        type: "string"
+        fields: ["orderId"]  # Fields to use as key
+      valueSerializationSchema:
+        type: "json"  # json, avro, protobuf
+```
+
+### Amazon MSK Sink
+
+```yaml
+sinks:
+  - id: "msk-sink"
+    name: "MSK Analytics Output"
+    type: "kafka"
+    input: "analytics-stream"
+    config:
+      bootstrapServers: "${MSK_BOOTSTRAP_SERVERS}"
+      topic: "analytics-output"
+      securityProtocol: "SASL_SSL"
+      saslMechanism: "AWS_MSK_IAM"
+      
+      # Producer Configuration
+      deliveryGuarantee: "exactly_once"
+      transactionTimeoutMs: 900000
+      retries: 3
+      
+      # Performance Tuning
+      batchSize: 16384
+      linger.ms: 50
+      compression.type: "snappy"
+```
+
+## Fault Tolerance
+
+Gulp implements robust fault tolerance mechanisms for both sources and sinks:
+
+### Source Fault Tolerance
+- Checkpointing of consumer offsets
+- Automatic offset recovery after failures
+- At-least-once or exactly-once processing guarantees
+- Configurable retry policies for connection failures
+
+### Sink Fault Tolerance
+- Transactional writes for exactly-once delivery
+- Automatic retry mechanisms for failed operations
+- Checkpointing of producer state
+- Dead letter queues for failed records (where supported)
+
+## Performance Tuning
+
+### Source Performance
+1. **Parallelism**
+   - Configure source parallelism based on topic partitions
+   - Balance parallelism across the pipeline
+
+2. **Batch Reading**
+   ```yaml
+   config:
+     fetchMinBytes: 1024
+     fetchMaxWaitMs: 500
+     maxPartitionFetchBytes: 1048576
+   ```
+
+3. **Memory Management**
+   ```yaml
+   config:
+     memoryBufferBytes: 5242880  # 5MB
+     maxBytesInFlight: 52428800  # 50MB
+   ```
+
+### Sink Performance
+1. **Batching**
+   ```yaml
+   config:
+     batchSize: 16384
+     linger.ms: 50
+     compression.type: "snappy"
+   ```
+
+2. **Buffer Management**
+   ```yaml
+   config:
+     bufferMemory: 33554432  # 32MB
+     maxRequestSize: 1048576  # 1MB
+     maxBlockMs: 60000
+   ```
+
+## Best Practices
+
+1. **Schema Management**
+   - Define explicit schemas for all sources
+   - Include data types and formats
+   - Document field meanings and constraints
+
+2. **Security**
+   - Use environment variables for credentials
+   - Enable encryption in transit
+   - Implement proper authentication
+
+3. **Monitoring**
+   - Configure metrics collection
+   - Monitor consumer lag
+   - Track processing latency
+
+4. **Error Handling**
+   - Implement dead letter queues
+   - Configure appropriate retry policies
+   - Log failed records for analysis
+
+## Auto Scaling
+
+Gulp supports automatic scaling of sources and sinks:
+
+### Source Scaling
+```yaml
+sources:
+  - id: "scalable-source"
+    config:
+      # Parallelism Configuration
+      parallelism: "auto"  # or specific number
+      minParallelism: 1
+      maxParallelism: 10
+      
+      # Scaling Triggers
+      scalingPolicy:
+        type: "kafka-lag"
+        target: 1000  # target lag
+        scaleUpThreshold: 2000
+        scaleDownThreshold: 500
+        cooldownPeriod: "5m"
+```
+
+### Sink Scaling
+```yaml
+sinks:
+  - id: "scalable-sink"
+    config:
+      # Parallelism Configuration
+      parallelism: "auto"
+      minParallelism: 1
+      maxParallelism: 8
+      
+      # Scaling Triggers
+      scalingPolicy:
+        type: "backpressure"
+        target: 0.7  # target backpressure ratio
+        scaleUpThreshold: 0.8
+        scaleDownThreshold: 0.3
+        cooldownPeriod: "5m"
+```
+
+## Monitoring and Metrics
+
+Gulp exposes detailed metrics for sources and sinks:
+
+### Source Metrics
+- Records read per second
+- Bytes read per second
+- Consumer lag
+- Processing latency
+- Watermark lag
+- Failed records count
+
+### Sink Metrics
+- Records written per second
+- Bytes written per second
+- Write latency
+- Failed writes
+- Buffer utilization
+- Transaction success rate 
