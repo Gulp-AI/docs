@@ -1,285 +1,310 @@
 ---
-title: "Source and Sink Configuration"
-description: "Detailed guide on configuring data sources and sinks in Gulp"
+title: "Sources and Sinks"
+description: "Configure data sources and sinks for your Gulp jobs"
 ---
 
-# Source and Sink Configuration
+# Sources and Sinks
 
-Gulp provides a flexible connector system for reading from various data sources and writing to different destinations.
+Gulp supports a variety of cloud-native sources and sinks, with built-in optimizations and best practices for each service.
 
-## Sources
+## AWS Sources
 
-Sources define where your streaming data comes from. Each source must have a unique ID and a schema defining the data structure.
-
-### Kafka Source
-
-Apache Kafka is a distributed streaming platform that can handle high-throughput data streams.
+### Amazon S3
 
 ```yaml
-sources:
-  - id: "orders-stream"
-    name: "Customer Orders"
-    type: "kafka"
-    config:
-      bootstrapServers: "kafka:9092"
-      topic: "orders"
-      groupId: "order-processor"
-      startingOffsets: "earliest"  # earliest, latest
-      
-      # Security Configuration (optional)
-      securityProtocol: "SASL_SSL"
-      saslMechanism: "PLAIN"
-      saslUsername: "${KAFKA_USERNAME}"
-      saslPassword: "${KAFKA_PASSWORD}"
-      
-      # Consumer Configuration
-      fetchMinBytes: 1
-      fetchMaxWaitMs: 500
-      maxPartitionFetchBytes: 1048576  # 1MB
-      
-      # Performance Tuning
-      autoCommitIntervalMs: 5000
-      heartbeatIntervalMs: 3000
-      sessionTimeoutMs: 45000
-      
-    schema:
-      type: "object"
-      properties:
-        orderId:
-          type: "string"
-        timestamp:
-          type: "number"
-          format: "unix-timestamp"
-        amount:
-          type: "number"
-          format: "double"
-        customerId:
-          type: "string"
+source:
+  type: "s3"
+  config:
+    bucket: "my-data-bucket"
+    path: "input/data/*.parquet"
+    format: "parquet"  # parquet, json, csv, avro
+    region: "us-west-2"
+    maxConcurrentRequests: 10
+    monitoring:
+      enabled: true
+      metrics: ["latency", "throughput", "errors"]
+    checkpointing:
+      enabled: true
+      interval: "1m"
+```
+
+### Amazon Kinesis
+
+```yaml
+source:
+  type: "kinesis"
+  config:
+    stream: "my-data-stream"
+    region: "us-west-2"
+    initialPosition: "LATEST"  # LATEST, TRIM_HORIZON, AT_TIMESTAMP
+    enhancedFanOut: true
+    monitoring:
+      enabled: true
+      metrics: ["latency", "throughput", "errors"]
+    watermark:
+      timestampField: "event_time"
+      maxOutOfOrderness: "5s"
 ```
 
 ### Amazon MSK (Managed Streaming for Kafka)
 
 ```yaml
-sources:
-  - id: "msk-stream"
-    name: "MSK Events"
-    type: "kafka"
-    config:
-      bootstrapServers: "${MSK_BOOTSTRAP_SERVERS}"
-      topic: "events"
-      groupId: "event-processor"
-      
-      # AWS MSK IAM Authentication
-      securityProtocol: "SASL_SSL"
-      saslMechanism: "AWS_MSK_IAM"
-      
-      # Consumer Configuration
-      isolationLevel: "read_committed"
-      maxPollRecords: 500
-      
-    schema:
-      type: "object"
-      properties:
-        eventId:
-          type: "string"
-        data:
-          type: "object"
+source:
+  type: "msk"
+  config:
+    bootstrapServers: "${MSK_BOOTSTRAP_SERVERS}"
+    topics: ["my-topic"]
+    groupId: "my-consumer-group"
+    securityProtocol: "SASL_SSL"
+    saslMechanism: "AWS_MSK_IAM"
+    isolation: "read_committed"
+    monitoring:
+      enabled: true
+      metrics: ["lag", "throughput", "errors"]
+    watermark:
+      timestampField: "event_time"
+      maxOutOfOrderness: "5s"
 ```
 
-## Sinks
+## AWS Sinks
 
-Sinks define where your processed data should be written. Each sink must specify its input stream and configuration.
-
-### Kafka Sink
+### Amazon S3
 
 ```yaml
-sinks:
-  - id: "processed-orders"
-    name: "Processed Orders Output"
-    type: "kafka"
-    input: "enriched-orders"  # ID of the input stream
-    config:
-      bootstrapServers: "kafka:9092"
-      topic: "processed-orders"
-      
-      # Producer Configuration
-      deliveryGuarantee: "exactly_once"  # exactly_once, at_least_once
-      transactionTimeoutMs: 900000  # 15 minutes
-      
-      # Performance Tuning
-      batchSize: 16384  # Size in bytes
-      linger.ms: 50  # Artificial delay for batching
-      compression.type: "snappy"  # none, gzip, snappy, lz4, zstd
-      bufferMemory: 33554432  # 32MB
-      
-      # Schema Configuration
-      keySerializationSchema:
-        type: "string"
-        fields: ["orderId"]  # Fields to use as key
-      valueSerializationSchema:
-        type: "json"  # json, avro, protobuf
+sink:
+  type: "s3"
+  config:
+    bucket: "my-output-bucket"
+    path: "output/data"
+    format: "parquet"
+    partitioning:
+      - field: "year"
+        extractFromTimestamp: "event_time"
+      - field: "month"
+        extractFromTimestamp: "event_time"
+    compression: "snappy"
+    maxFileSize: "128mb"
+    inactivityInterval: "5m"
 ```
 
-### Amazon MSK Sink
+### Amazon Kinesis
 
 ```yaml
-sinks:
-  - id: "msk-sink"
-    name: "MSK Analytics Output"
-    type: "kafka"
-    input: "analytics-stream"
-    config:
-      bootstrapServers: "${MSK_BOOTSTRAP_SERVERS}"
-      topic: "analytics-output"
-      securityProtocol: "SASL_SSL"
-      saslMechanism: "AWS_MSK_IAM"
-      
-      # Producer Configuration
-      deliveryGuarantee: "exactly_once"
-      transactionTimeoutMs: 900000
-      retries: 3
-      
-      # Performance Tuning
-      batchSize: 16384
-      linger.ms: 50
-      compression.type: "snappy"
+sink:
+  type: "kinesis"
+  config:
+    stream: "my-output-stream"
+    region: "us-west-2"
+    partitionKey: "user_id"
+    aggregation: true
+    failOnErrors: true
+    monitoring:
+      enabled: true
+      metrics: ["latency", "throughput", "errors"]
 ```
 
-## Fault Tolerance
+### Amazon MSK
 
-Gulp implements robust fault tolerance mechanisms for both sources and sinks:
-
-### Source Fault Tolerance
-- Checkpointing of consumer offsets
-- Automatic offset recovery after failures
-- At-least-once or exactly-once processing guarantees
-- Configurable retry policies for connection failures
-
-### Sink Fault Tolerance
-- Transactional writes for exactly-once delivery
-- Automatic retry mechanisms for failed operations
-- Checkpointing of producer state
-- Dead letter queues for failed records (where supported)
-
-## Performance Tuning
-
-### Source Performance
-1. **Parallelism**
-   - Configure source parallelism based on topic partitions
-   - Balance parallelism across the pipeline
-
-2. **Batch Reading**
-   ```yaml
-   config:
-     fetchMinBytes: 1024
-     fetchMaxWaitMs: 500
-     maxPartitionFetchBytes: 1048576
-   ```
-
-3. **Memory Management**
-   ```yaml
-   config:
-     memoryBufferBytes: 5242880  # 5MB
-     maxBytesInFlight: 52428800  # 50MB
-   ```
-
-### Sink Performance
-1. **Batching**
-   ```yaml
-   config:
-     batchSize: 16384
-     linger.ms: 50
-     compression.type: "snappy"
-   ```
-
-2. **Buffer Management**
-   ```yaml
-   config:
-     bufferMemory: 33554432  # 32MB
-     maxRequestSize: 1048576  # 1MB
-     maxBlockMs: 60000
-   ```
-
-## Best Practices
-
-1. **Schema Management**
-   - Define explicit schemas for all sources
-   - Include data types and formats
-   - Document field meanings and constraints
-
-2. **Security**
-   - Use environment variables for credentials
-   - Enable encryption in transit
-   - Implement proper authentication
-
-3. **Monitoring**
-   - Configure metrics collection
-   - Monitor consumer lag
-   - Track processing latency
-
-4. **Error Handling**
-   - Implement dead letter queues
-   - Configure appropriate retry policies
-   - Log failed records for analysis
-
-## Auto Scaling
-
-Gulp supports automatic scaling of sources and sinks:
-
-### Source Scaling
 ```yaml
-sources:
-  - id: "scalable-source"
-    config:
-      # Parallelism Configuration
-      parallelism: "auto"  # or specific number
-      minParallelism: 1
-      maxParallelism: 10
-      
-      # Scaling Triggers
-      scalingPolicy:
-        type: "kafka-lag"
-        target: 1000  # target lag
-        scaleUpThreshold: 2000
-        scaleDownThreshold: 500
-        cooldownPeriod: "5m"
+sink:
+  type: "msk"
+  config:
+    bootstrapServers: "${MSK_BOOTSTRAP_SERVERS}"
+    topic: "my-output-topic"
+    securityProtocol: "SASL_SSL"
+    saslMechanism: "AWS_MSK_IAM"
+    delivery: "exactly_once"
+    transaction:
+      timeout: "15m"
+      maxAttempts: 3
 ```
 
-### Sink Scaling
+### Amazon Redshift
+
 ```yaml
-sinks:
-  - id: "scalable-sink"
-    config:
-      # Parallelism Configuration
-      parallelism: "auto"
-      minParallelism: 1
-      maxParallelism: 8
-      
-      # Scaling Triggers
-      scalingPolicy:
-        type: "backpressure"
-        target: 0.7  # target backpressure ratio
-        scaleUpThreshold: 0.8
-        scaleDownThreshold: 0.3
-        cooldownPeriod: "5m"
+sink:
+  type: "redshift"
+  config:
+    cluster: "my-redshift-cluster"
+    database: "my_database"
+    table: "my_table"
+    region: "us-west-2"
+    loadMethod: "copy"  # copy, insert
+    staging:
+      bucket: "my-staging-bucket"
+      path: "redshift-staging"
+    batchSize: "1000"
+    monitoring:
+      enabled: true
+      metrics: ["latency", "throughput", "errors"]
 ```
 
-## Monitoring and Metrics
+## GCP Sources
 
-Gulp exposes detailed metrics for sources and sinks:
+### Google Cloud Storage (GCS)
 
-### Source Metrics
-- Records read per second
-- Bytes read per second
-- Consumer lag
-- Processing latency
-- Watermark lag
-- Failed records count
+```yaml
+source:
+  type: "gcs"
+  config:
+    bucket: "my-data-bucket"
+    path: "input/data/*.parquet"
+    format: "parquet"  # parquet, json, csv, avro
+    maxConcurrentRequests: 10
+    monitoring:
+      enabled: true
+      metrics: ["latency", "throughput", "errors"]
+    checkpointing:
+      enabled: true
+      interval: "1m"
+```
 
-### Sink Metrics
-- Records written per second
-- Bytes written per second
-- Write latency
-- Failed writes
-- Buffer utilization
-- Transaction success rate 
+### Google Cloud Pub/Sub
+
+```yaml
+source:
+  type: "pubsub"
+  config:
+    subscription: "projects/my-project/subscriptions/my-subscription"
+    maxOutstandingMessages: 1000
+    maxOutstandingBytes: "1gb"
+    monitoring:
+      enabled: true
+      metrics: ["latency", "throughput", "errors"]
+    watermark:
+      timestampField: "event_time"
+      maxOutOfOrderness: "5s"
+```
+
+### BigQuery
+
+```yaml
+source:
+  type: "bigquery"
+  config:
+    project: "my-project"
+    dataset: "my_dataset"
+    table: "my_table"
+    viewMaterializationProject: "my-project"  # For views
+    viewMaterializationDataset: "temp_dataset"
+    parallelism: 10
+    monitoring:
+      enabled: true
+      metrics: ["latency", "throughput", "errors"]
+```
+
+## GCP Sinks
+
+### Google Cloud Storage (GCS)
+
+```yaml
+sink:
+  type: "gcs"
+  config:
+    bucket: "my-output-bucket"
+    path: "output/data"
+    format: "parquet"
+    partitioning:
+      - field: "year"
+        extractFromTimestamp: "event_time"
+      - field: "month"
+        extractFromTimestamp: "event_time"
+    compression: "snappy"
+    maxFileSize: "128mb"
+    inactivityInterval: "5m"
+```
+
+### Google Cloud Pub/Sub
+
+```yaml
+sink:
+  type: "pubsub"
+  config:
+    topic: "projects/my-project/topics/my-topic"
+    batchSize: 100
+    maxBatchSize: "1mb"
+    maxBatchDuration: "500ms"
+    orderingKey: "user_id"  # For ordered delivery
+    monitoring:
+      enabled: true
+      metrics: ["latency", "throughput", "errors"]
+```
+
+### BigQuery
+
+```yaml
+sink:
+  type: "bigquery"
+  config:
+    project: "my-project"
+    dataset: "my_dataset"
+    table: "my_table"
+    createDisposition: "CREATE_IF_NEEDED"
+    writeDisposition: "WRITE_APPEND"
+    partitioning:
+      type: "time"
+      field: "event_time"
+      expirationMs: 2592000000  # 30 days
+    clustering:
+      fields: ["user_id", "event_type"]
+    monitoring:
+      enabled: true
+      metrics: ["latency", "throughput", "errors"]
+```
+
+## Common Features
+
+All sources and sinks support these common configurations:
+
+### Error Handling
+
+```yaml
+errorHandling:
+  retries:
+    maxAttempts: 3
+    backoffPeriod: "1s"
+    maxBackoffPeriod: "1m"
+    multiplier: 2.0
+  deadLetter:
+    enabled: true
+    destination: "s3://my-bucket/dead-letter"  # or gs:// for GCP
+```
+
+### Monitoring
+
+```yaml
+monitoring:
+  metrics:
+    - name: "throughput"
+      interval: "1m"
+    - name: "latency"
+      interval: "1m"
+    - name: "errors"
+      interval: "1m"
+  alerts:
+    - name: "HighLatency"
+      threshold: "5s"
+      duration: "5m"
+    - name: "HighErrorRate"
+      threshold: 0.01
+      duration: "5m"
+```
+
+### Schema Evolution
+
+```yaml
+schema:
+  evolution:
+    mode: "forward"  # forward, backward, full
+    compatibility: "strict"  # strict, relaxed
+  validation:
+    enabled: true
+    mode: "warn"  # warn, fail
+```
+
+<Tip>
+**Performance Tip**: For optimal performance, adjust batch sizes and parallelism based on your data volume and latency requirements.
+</Tip>
+
+<Warning>
+Remember to configure appropriate IAM roles and permissions for accessing these services. Refer to the cloud-specific documentation for security best practices. 
