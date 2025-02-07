@@ -1,0 +1,70 @@
+---
+title: 'API Reference'
+description: 'Overview of the Osmosis Agent Improvement API'
+---
+
+The Osmosis Agent Improvement API provides endpoints for enhancing agent tasks, storing knowledge, and managing data cleanup.
+
+## Base URL
+
+```bash
+https://osmosis.gulp.dev
+```
+
+## Authentication
+
+All API requests require authentication using an API key. Include your API key in the `x-api-key` header:
+
+```bash
+curl -H "x-api-key: your-api-key" https://osmosis.gulp.dev/enhance_task
+```
+
+## API Endpoints
+
+### Task Enhancement
+
+- [Enhance Task](/api-reference/enhance-task)
+  - `POST /enhance_task`
+  - Enriches tasks with relevant knowledge and context
+  - Supports streaming responses
+  - Returns enhanced task and metadata
+
+### Knowledge Storage
+
+- [Store Knowledge](/api-reference/store-knowledge)
+  - `POST /store_knowledge`
+  - Stores agent interactions and experiences
+  - Supports batch operations
+  - Returns storage confirmation and metadata
+
+### Data Management
+
+- [Delete by Intent](/api-reference/delete-by-intent)
+  - `POST /delete_by_intent`
+  - Removes knowledge entries by intent matching
+  - Supports dry runs and metadata filters
+  - Returns deletion results and matches
+
+## HTTP Response Codes
+
+| Code | Description |
+|------|-------------|
+| 200 | Success |
+| 400 | Bad Request - Invalid parameters |
+| 401 | Unauthorized - Invalid API key |
+| 429 | Too Many Requests - Rate limit exceeded |
+| 500 | Internal Server Error |
+
+## Error Codes
+
+| Code | Description |
+|------|-------------|
+| `validation_error` | Request validation failed |
+| `invalid_request` | Invalid request format or parameters |
+| `unauthorized` | Invalid or missing API key |
+| `rate_limit_exceeded` | Too many requests |
+| `internal_error` | Internal server error |
+
+## Support
+
+- [Documentation](/docs)

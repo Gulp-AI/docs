@@ -1,0 +1,70 @@
+---
+title: 'Authentication'
+description: 'Learn how to authenticate with the Osmosis API'
+---
+
+To use the Osmosis API, you'll need an API key. This key serves two purposes:
+1. Authentication for API requests
+2. Tenant ID for data isolation
+
+## Getting an API Key
+
+1. For now, please contact us at [founders@gulp.ai](mailto:founders@gulp.ai) to get an API key.
+
+## Using Your API Key
+
+Include your API key in all requests to the Osmosis API using the `x-api-key` header:
+
+```bash
+curl --location 'https://osmosis.gulp.ai/enhance_task' \
+--header 'x-api-key: your_api_key_here' \
+--header 'Content-Type: application/json' \
+--data '{
+  "tenant_id": "your_api_key_here",
+  "input_text": "Your query here"
+}'
+```
+
+## Tenant ID
+
+The `tenant_id` field in request bodies should match your API key. This ensures your data is isolated and secure:
+
+```json
+{
+  "tenant_id": "your_api_key_here",
+  // ... other fields
+}
+```
+
+## Security Best Practices
+
+1. **Keep it Secret** - Never expose your API key in client-side code or public repositories
+2. **Use Environment Variables** - Store your API key in environment variables:
+
+<CodeGroup>
+
+```typescript TypeScript
+import dotenv from 'dotenv';
+
+dotenv.config();
+const apiKey = process.env.OSMOSIS_API_KEY;
+```
+
+```javascript JavaScript
+require('dotenv').config();
+const apiKey = process.env.OSMOSIS_API_KEY;
+```
+
+```python Python
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+api_key = os.getenv('OSMOSIS_API_KEY')
+```
+
+</CodeGroup>
+
+## Next Steps
+
+- [Read the API Reference](/api-reference/overview)

@@ -1,0 +1,266 @@
+---
+title: 'Enhance Task'
+description: 'API reference for the enhance task endpoint'
+---
+
+The `/enhance_task` endpoint enriches tasks with relevant knowledge and context to improve agent responses.
+
+## Endpoint
+
+```bash
+POST https://osmosis.gulp.dev/enhance_task
+```
+
+## Headers
+
+| Header | Value |
+|--------|-------|
+| `Content-Type` | `application/json` |
+| `x-api-key` | Your API key |
+
+## Request Body
+
+```typescript
+{
+  // Required: Unique identifier for the tenant/user
+  tenant_id: string,
+  
+  // Required: The agent's input/query
+  input_text: string,
+  
+  // Optional: Additional context about the agent's current state
+  context?: {
+    // Any string key-value pairs
+    [key: string]: string
+  },
+  
+  // Optional: Type of agent making the request
+  agent_type?: string
+}
+```
+
+### Parameters
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `tenant_id` | string | Yes | - | Unique identifier for the tenant/user |
+| `input_text` | string | Yes | - | The agent's input/query |
+| `context` | object | No | {} | Additional context about the agent's current state as key-value string pairs |
+| `agent_type` | string | No | null | Type of agent making the request |
+
+## Example Requests
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://osmosis.gulp.dev/enhance_task \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: your-api-key" \
+  -d '{
+    "tenant_id": "webarena",
+    "input_text": "Process refund request for damaged item",
+    "context": {
+      "user_type": "customer_service",
+      "department": "support",
+      "category": "refunds",
+      "priority": "high"
+    },
+    "agent_type": "support_agent"
+  }'
+```
+
+```typescript TypeScript
+// Example using axios
+const enhanceTask = async () => {
+  const axios = require('axios');
+  
+  const response = await axios.post('https://osmosis.gulp.dev/enhance_task', {
+    tenant_id: 'webarena',
+    input_text: 'Process refund request for damaged item',
+    context: {
+      user_type: 'customer_service',
+      department: 'support',
+      category: 'refunds',
+      priority: 'high'
+    },
+    agent_type: 'support_agent'
+  }, {
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': 'your-api-key'
+    }
+  });
+  
+  return response.data;
+};
+```
+
+```javascript JavaScript
+fetch('https://osmosis.gulp.dev/enhance_task', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'x-api-key': 'your-api-key'
+  },
+  body: JSON.stringify({
+    tenant_id: 'webarena',
+    input_text: 'Process refund request for damaged item',
+    context: {
+      user_type: 'customer_service',
+      department: 'support',
+      category: 'refunds',
+      priority: 'high'
+    },
+    agent_type: 'support_agent'
+  })
+})
+.then(response => response.json())
+.then(data => console.log(data));
+```
+
+```python Python
+import requests
+
+url = "https://osmosis.gulp.dev/enhance_task"
+headers = {
+    "Content-Type": "application/json",
+    "x-api-key": "your-api-key"
+}
+payload = {
+    "tenant_id": "webarena",
+    "input_text": "Process refund request for damaged item",
+    "context": {
+        "user_type": "customer_service",
+        "department": "support",
+        "category": "refunds",
+        "priority": "high"
+    },
+    "agent_type": "support_agent"
+}
+
+response = requests.post(url, json=payload, headers=headers)
+data = response.json()
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "io/ioutil"
+    "net/http"
+)
+
+func enhanceTask() ([]byte, error) {
+    payload := map[string]interface{}{
+        "tenant_id":  "webarena",
+        "input_text": "Process refund request for damaged item",
+        "context": map[string]string{
+            "user_type":  "customer_service",
+            "department": "support",
+            "category":   "refunds",
+            "priority":   "high",
+        },
+        "agent_type": "support_agent",
+    }
+
+    jsonData, err := json.Marshal(payload)
+    if err != nil {
+        return nil, err
+    }
+
+    req, err := http.NewRequest("POST", "https://osmosis.gulp.dev/enhance_task", bytes.NewBuffer(jsonData))
+    if err != nil {
+        return nil, err
+    }
+
+    req.Header.Set("Content-Type", "application/json")
+    req.Header.Set("x-api-key", "your-api-key")
+
+    client := &http.Client{}
+    resp, err := client.Do(req)
+    if err != nil {
+        return nil, err
+    }
+    defer resp.Body.Close()
+
+    return ioutil.ReadAll(resp.Body)
+}
+```
+
+</CodeGroup>
+
+## Response
+
+### Success Response
+
+```typescript
+{
+  // The processed response
+  response: string,
+  
+  // Optional metadata about the enhancement
+  metadata?: Record<string, any>
+}
+```
+
+Example:
+
+```json
+{
+  "response": "Based on the refund request for the damaged item, I recommend processing a full refund following standard support procedures for high-priority cases.",
+  "metadata": {
+    "process_time_ms": 150,
+    "confidence_score": 0.95,
+    "agent_type": "support_agent",
+    "enhancement_type": "policy_based"
+  }
+}
+```
+
+### Error Response
+
+```typescript
+{
+  // Error details array
+  detail: Array<{
+    // Location of the error
+    loc: Array<string | number>,
+    // Error message
+    msg: string,
+    // Error type
+    type: string
+  }>
+}
+```
+
+Example:
+
+```json
+{
+  "detail": [
+    {
+      "loc": ["body", "tenant_id"],
+      "msg": "field required",
+      "type": "value_error.missing"
+    }
+  ]
+}
+```
+
+## Response Codes
+
+| Code | Description |
+|------|-------------|
+| 200 | Enhancement successful |
+| 422 | Validation error |
+
+## Error Codes
+
+| Code | Description |
+|------|-------------|
+| `value_error.missing` | Required field is missing |
+| `value_error.json` | Invalid JSON in request body |
+| `type_error` | Incorrect type for a field |
+| `value_error` | Invalid value for a field |

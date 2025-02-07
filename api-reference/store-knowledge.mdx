@@ -1,0 +1,444 @@
+---
+title: 'Store Knowledge'
+description: 'API reference for the store knowledge endpoint'
+---
+
+The `/store_knowledge` endpoint allows you to store agent interactions and experiences for future task enhancement.
+
+## Endpoint
+
+```bash
+POST https://osmosis.gulp.dev/store_knowledge
+```
+
+## Headers
+
+| Header | Value |
+|--------|-------|
+| `Content-Type` | `application/json` |
+| `x-api-key` | Your API key |
+
+## Request Body
+
+```typescript
+{
+  // Required: Unique identifier for the tenant/user
+  tenant_id: string,
+  
+  // Required: The original user query or instruction
+  query: string,
+  
+  // Required: The sequence of agent turns
+  turns: Array<{
+    // Required: The turn number in the interaction
+    turn: number,
+    
+    // Required: The flattened input the agent sees
+    inputs: string,
+    
+    // Required: The output/action of the agent
+    decision: string,
+    
+    // Optional: What the agent remembers from this turn
+    memory?: string,
+    
+    // Optional: The result of the action
+    result?: string
+  }>,
+  
+  // Optional: Whether the agent completed its task successfully
+  success?: boolean,
+  
+  // Optional: Type of agent (e.g., 'browser', 'voice')
+  agent_type?: string,
+  
+  // Required: When the interaction occurred
+  timestamp: string,
+  
+  // Optional: Additional metadata
+  metadata?: Record<string, any>
+}
+```
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `tenant_id` | string | Yes | Unique identifier for the tenant/user |
+| `query` | string | Yes | The original user query or instruction |
+| `turns` | array | Yes | The sequence of agent turns |
+| `success` | boolean | No | Whether the agent completed its task successfully |
+| `agent_type` | string | No | Type of agent (e.g., 'browser', 'voice') |
+| `timestamp` | string | Yes | When the interaction occurred (ISO format) |
+| `metadata` | object | No | Additional metadata about the interaction |
+
+## Example Requests
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://osmosis.gulp.dev/store_knowledge \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: your-api-key" \
+  -d '{
+    "tenant_id": "your-api-key",
+    "query": "Find and purchase a red Nike running shoe in size 10",
+    "turns": [
+      {
+        "turn": 1,
+        "inputs": "On shopping website homepage. Need to search for red Nike running shoes.",
+        "decision": "{\\"action_type\\": \\"click\\", \\"element_name\\": \\"search_bar\\", \\"text\\": [\\"Nike red running shoes\\"], \\"element_role\\": \\"searchbox\\", \\"coords\\": [120, 35], \\"url\\": \\"https://shop.example.com\\"}",
+        "result": "click [120, 35] where [120, 35] is searchbox \\"Search products...\\" followed by typing \\"Nike red running shoes\\"",
+        "memory": "User wants red Nike running shoes. Starting search from homepage."
+      },
+      {
+        "turn": 2,
+        "inputs": "Search results show multiple Nike running shoes. Need to select size 10 in red.",
+        "decision": "{\\"action_type\\": \\"click\\", \\"element_name\\": \\"product_link\\", \\"text\\": [\\"Nike Air Zoom Pegasus - Red\\"], \\"element_role\\": \\"link\\", \\"coords\\": [250, 320], \\"url\\": \\"https://shop.example.com/products/nike-air-zoom-pegasus?color=red&size=10\\"}",
+        "result": "click [250, 320] where [250, 320] is link \\"Nike Air Zoom Pegasus - Red\\" in size 10 with 4.8/5 stars (2,453 reviews)",
+        "memory": "Selected Pegasus model in red, size 10 based on positive reviews and exact match to requirements"
+      }
+    ],
+    "success": true,
+    "agent_type": "browser",
+    "timestamp": "2024-03-14T10:30:00Z",
+    "metadata": {
+      "browser_type": "chrome",
+      "site": "shopping_admin",
+      "interaction_duration_seconds": 120,
+      "user_satisfaction_score": 0.95
+    }
+  }'
+```
+
+```typescript TypeScript
+// Example using axios
+const storeKnowledge = async () => {
+  const apiKey = process.env.OSMOSIS_API_KEY;
+  const axios = require('axios');
+  
+  const response = await axios.post('https://osmosis.gulp.dev/store_knowledge', {
+    tenant_id: apiKey,
+    query: 'Find and purchase a red Nike running shoe in size 10',
+    turns: [
+      {
+        turn: 1,
+        inputs: 'On shopping website homepage. Need to search for red Nike running shoes.',
+        decision: JSON.stringify({
+          action_type: 'click',
+          element_name: 'search_bar',
+          text: ['Nike red running shoes'],
+          element_role: 'searchbox',
+          coords: [120, 35],
+          url: 'https://shop.example.com'
+        }),
+        result: 'click [120, 35] where [120, 35] is searchbox "Search products..." followed by typing "Nike red running shoes"',
+        memory: 'User wants red Nike running shoes. Starting search from homepage.'
+      },
+      {
+        turn: 2,
+        inputs: 'Search results show multiple Nike running shoes. Need to select size 10 in red.',
+        decision: JSON.stringify({
+          action_type: 'click',
+          element_name: 'product_link',
+          text: ['Nike Air Zoom Pegasus - Red'],
+          element_role: 'link',
+          coords: [250, 320],
+          url: 'https://shop.example.com/products/nike-air-zoom-pegasus?color=red&size=10'
+        }),
+        result: 'click [250, 320] where [250, 320] is link "Nike Air Zoom Pegasus - Red" in size 10 with 4.8/5 stars (2,453 reviews)',
+        memory: 'Selected Pegasus model in red, size 10 based on positive reviews and exact match to requirements'
+      }
+    ],
+    success: true,
+    agent_type: 'browser',
+    timestamp: '2024-03-14T10:30:00Z',
+    metadata: {
+      browser_type: 'chrome',
+      site: 'shopping_admin',
+      interaction_duration_seconds: 120,
+      user_satisfaction_score: 0.95
+    }
+  }, {
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey
+    }
+  });
+  
+  return response.data;
+};
+```
+
+```python Python
+import os
+from dotenv import load_dotenv
+import requests
+import json
+from datetime import datetime
+
+load_dotenv()
+api_key = os.getenv('OSMOSIS_API_KEY')
+
+url = "https://osmosis.gulp.dev/store_knowledge"
+headers = {
+    "Content-Type": "application/json",
+    "x-api-key": api_key
+}
+
+payload = {
+    "tenant_id": api_key,
+    "query": "Find and purchase a red Nike running shoe in size 10",
+    "turns": [
+        {
+            "turn": 1,
+            "inputs": "On shopping website homepage. Need to search for red Nike running shoes.",
+            "decision": json.dumps({
+                "action_type": "click",
+                "element_name": "search_bar",
+                "text": ["Nike red running shoes"],
+                "element_role": "searchbox",
+                "coords": [120, 35],
+                "url": "https://shop.example.com"
+            }),
+            "result": 'click [120, 35] where [120, 35] is searchbox "Search products..." followed by typing "Nike red running shoes"',
+            "memory": "User wants red Nike running shoes. Starting search from homepage."
+        },
+        {
+            "turn": 2,
+            "inputs": "Search results show multiple Nike running shoes. Need to select size 10 in red.",
+            "decision": json.dumps({
+                "action_type": "click",
+                "element_name": "product_link",
+                "text": ["Nike Air Zoom Pegasus - Red"],
+                "element_role": "link",
+                "coords": [250, 320],
+                "url": "https://shop.example.com/products/nike-air-zoom-pegasus?color=red&size=10"
+            }),
+            "result": 'click [250, 320] where [250, 320] is link "Nike Air Zoom Pegasus - Red" in size 10 with 4.8/5 stars (2,453 reviews)',
+            "memory": "Selected Pegasus model in red, size 10 based on positive reviews and exact match to requirements"
+        }
+    ],
+    "success": True,
+    "agent_type": "browser",
+    "timestamp": "2024-03-14T10:30:00Z",
+    "metadata": {
+        "browser_type": "chrome",
+        "site": "shopping_admin",
+        "interaction_duration_seconds": 120,
+        "user_satisfaction_score": 0.95
+    }
+}
+
+response = requests.post(url, json=payload, headers=headers)
+data = response.json()
+```
+
+```go Go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "io/ioutil"
+    "net/http"
+    "os"
+)
+
+type Turn struct {
+    Turn     int    `json:"turn"`
+    Inputs   string `json:"inputs"`
+    Decision string `json:"decision"`
+    Memory   string `json:"memory,omitempty"`
+    Result   string `json:"result,omitempty"`
+}
+
+type KnowledgePayload struct {
+    TenantID  string                 `json:"tenant_id"`
+    Query     string                 `json:"query"`
+    Turns     []Turn                 `json:"turns"`
+    Success   bool                   `json:"success,omitempty"`
+    AgentType string                 `json:"agent_type,omitempty"`
+    Timestamp string                 `json:"timestamp"`
+    Metadata  map[string]interface{} `json:"metadata,omitempty"`
+}
+
+func storeKnowledge() ([]byte, error) {
+    apiKey := os.Getenv("OSMOSIS_API_KEY")
+    
+    decision1, _ := json.Marshal(map[string]interface{}{
+        "action_type":   "click",
+        "element_name":  "search_bar",
+        "text":         []string{"Nike red running shoes"},
+        "element_role":  "searchbox",
+        "coords":       []int{120, 35},
+        "url":          "https://shop.example.com",
+    })
+
+    decision2, _ := json.Marshal(map[string]interface{}{
+        "action_type":   "click",
+        "element_name":  "product_link",
+        "text":         []string{"Nike Air Zoom Pegasus - Red"},
+        "element_role":  "link",
+        "coords":       []int{250, 320},
+        "url":          "https://shop.example.com/products/nike-air-zoom-pegasus?color=red&size=10",
+    })
+
+    payload := KnowledgePayload{
+        TenantID:  apiKey,
+        Query:     "Find and purchase a red Nike running shoe in size 10",
+        Turns: []Turn{
+            {
+                Turn:     1,
+                Inputs:   "On shopping website homepage. Need to search for red Nike running shoes.",
+                Decision: string(decision1),
+                Result:   `click [120, 35] where [120, 35] is searchbox "Search products..." followed by typing "Nike red running shoes"`,
+                Memory:   "User wants red Nike running shoes. Starting search from homepage.",
+            },
+            {
+                Turn:     2,
+                Inputs:   "Search results show multiple Nike running shoes. Need to select size 10 in red.",
+                Decision: string(decision2),
+                Result:   `click [250, 320] where [250, 320] is link "Nike Air Zoom Pegasus - Red" in size 10 with 4.8/5 stars (2,453 reviews)`,
+                Memory:   "Selected Pegasus model in red, size 10 based on positive reviews and exact match to requirements",
+            },
+        },
+        Success:   true,
+        AgentType: "browser",
+        Timestamp: "2024-03-14T10:30:00Z",
+        Metadata: map[string]interface{}{
+            "browser_type":                 "chrome",
+            "site":                         "shopping_admin",
+            "interaction_duration_seconds": 120,
+            "user_satisfaction_score":      0.95,
+        },
+    }
+
+    jsonData, err := json.Marshal(payload)
+    if err != nil {
+        return nil, err
+    }
+
+    req, err := http.NewRequest("POST", "https://osmosis.gulp.dev/store_knowledge", bytes.NewBuffer(jsonData))
+    if err != nil {
+        return nil, err
+    }
+
+    req.Header.Set("Content-Type", "application/json")
+    req.Header.Set("x-api-key", apiKey)
+
+    client := &http.Client{}
+    resp, err := client.Do(req)
+    if err != nil {
+        return nil, err
+    }
+    defer resp.Body.Close()
+
+    return ioutil.ReadAll(resp.Body)
+}
+```
+
+</CodeGroup>
+
+## Response
+
+### Success Response
+
+```typescript
+{
+  // Unique ID for the stored knowledge
+  id: string,
+  
+  // Number of turns stored
+  turn_count: number,
+  
+  // Storage timestamp
+  timestamp: string,
+  
+  // Storage status
+  status: "success",
+  
+  // Additional metadata
+  metadata?: Record<string, any>
+}
+```
+
+Example:
+
+```json
+{
+  "id": "know_abc123xyz",
+  "turn_count": 2,
+  "timestamp": "2024-03-14T10:30:00Z",
+  "status": "success",
+  "metadata": {
+    "browser_type": "chrome",
+    "site": "shopping_admin",
+    "interaction_duration_seconds": 120,
+    "user_satisfaction_score": 0.95,
+    "storage_location": "us-east-1",
+    "index_status": "complete"
+  }
+}
+```
+
+### Error Response
+
+```typescript
+{
+  // Error code
+  code: string,
+  
+  // HTTP status code
+  status: number,
+  
+  // Error message
+  message: string,
+  
+  // Optional: Additional error details
+  details?: Record<string, any>
+}
+```
+
+Example:
+
+```json
+{
+  "code": "validation_error",
+  "status": 400,
+  "message": "Invalid request body",
+  "details": {
+    "field": "turns",
+    "error": "Must have at least one turn"
+  }
+}
+```
+
+## Response Codes
+
+| Code | Description |
+|------|-------------|
+| 202 | Knowledge stored successfully |
+| 400 | Invalid request (validation error) |
+| 401 | Invalid or missing API key |
+| 429 | Rate limit exceeded |
+| 500 | Internal server error |
+
+## Error Codes
+
+| Code | Description |
+|------|-------------|
+| `validation_error` | Request validation failed |
+| `invalid_query` | Invalid or missing query |
+| `invalid_turns` | Invalid turns array |
+| `invalid_metadata` | Invalid metadata format |
+| `storage_error` | Error storing knowledge |
+| `rate_limit_exceeded` | Too many requests |
+| `internal_error` | Internal server error |
+
+## Usage Notes
+
+1. **Turn Numbers**
+   - Must be sequential
+   - Start from 1
+   - No gaps allowed

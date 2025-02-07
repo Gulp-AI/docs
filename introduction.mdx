@@ -1,32 +1,46 @@
 ---
 title: 'Introduction'
-description: 'Welcome to Gulp Planner - A powerful abstraction layer for Apache Flink'
+description: 'Learn how to use the Osmosis Agent Improvement API to enhance your AI agents'
 ---
 
-# Gulp Planner
+# Welcome to Osmosis API
 
-Gulp Planner is a powerful abstraction layer for Apache Flink that allows you to define stream processing jobs using simple YAML configuration files. It provides a declarative way to specify complex stream processing pipelines without writing Java code.
+Osmosis Agent Improvement API helps you build smarter, more context-aware AI agents. Our API provides essential building blocks for creating agents that learn from past interactions and make better decisions over time.
 
 ## Key Features
 
-- **Declarative Job Definition**: Define your entire Flink job using YAML configuration
-- **Rich Transformation Support**: 
-  - Window Operations (Tumbling, Sliding, Session)
-  - Aggregations (Sum, Count, Average, Min, Max)
-  - Field Transformations
-  - Filtering and Mapping
-  - Key-based Operations
-- **Cloud-Native Integrations**:
-  - Amazon Web Services (S3, Kinesis, MSK)
-  - Google Cloud Platform (BigQuery, Pub/Sub, GCS)
-  - Azure (Event Hubs, Blob Storage)
-  - Apache Kafka
-- **State Management**: 
-  - RocksDB State Backend
-  - Filesystem State Backend
-  - Memory State Backend
-- **Type-Safe Operations**: Built-in schema validation and type checking
+- 🧠 **Contextual Enhancement** - Enrich your agent's responses with relevant past knowledge
+- 📝 **Knowledge Storage** - Store and learn from interaction histories
+- 🔄 **Continuous Learning** - Improve agent responses based on past successes
+- 🧹 **Smart Cleanup** - Remove outdated or irrelevant knowledge automatically
 
-## Project Status
+## Core Endpoints
 
-This project is actively maintained and built for Apache Flink 1.20 with JDK 17 compatibility.
+The API provides three main endpoints:
+
+1. **`/enhance_task`** – Enhance an agent's query with relevant knowledge
+2. **`/store_knowledge`** – Store a conversation or event history
+3. **`/delete_by_intent`** – Delete stale or irrelevant knowledge
+
+## Why Use Osmosis?
+
+Traditional AI agents can lose context or make unpredictable choices if they're not continually learning. Osmosis helps by:
+
+- **Storing** your interaction history for richer recall
+- **Enhancing** your agent's responses with relevant past knowledge
+- **Cleaning** old or irrelevant knowledge, so the agent stays accurate over time
+
+You control how much your agent relies on AI, ensuring it remains self-healing and repeatable without becoming unpredictable.
+
+## Getting Started
+
+To start using the Osmosis API:
+
+1. [Get your API key](/quickstart/authentication)
+
+
+## Need Help?
+
+- Email us at [founders@gulp.ai](mailto:founders@gulp.ai)
+
+Ready to get started? Head over to our [Quick Start guide](/quickstart/authentication) to begin!

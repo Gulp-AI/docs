@@ -1,0 +1,182 @@
+---
+title: 'Delete by Intent'
+description: 'API reference for the delete by intent endpoint'
+---
+
+The `/delete_by_intent` endpoint allows you to remove knowledge entries that match a specific intent.
+
+## Endpoint
+
+```bash
+POST https://osmosis.gulp.dev/delete_by_intent
+```
+
+## Headers
+
+| Header | Value |
+|--------|-------|
+| `Content-Type` | `application/json` |
+| `x-api-key` | Your API key |
+
+## Query Parameters
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `tenant_id` | string | Yes | - | The tenant identifier |
+| `intent` | string | Yes | - | The intent to match against |
+| `similarity_threshold` | number | No | 0.5 | Optional similarity threshold for matching documents |
+
+## Example Requests
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST 'https://osmosis.gulp.dev/delete_by_intent?tenant_id=your-api-key&intent=process%20refund&similarity_threshold=0.7' \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: your-api-key"
+```
+
+```typescript TypeScript
+// Example using axios
+const deleteByIntent = async () => {
+  const apiKey = process.env.OSMOSIS_API_KEY;
+  const axios = require('axios');
+  
+  const response = await axios.post('https://osmosis.gulp.dev/delete_by_intent', null, {
+    params: {
+      tenant_id: apiKey,
+      intent: 'process refund',
+      similarity_threshold: 0.7
+    },
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey
+    }
+  });
+  
+  return response.data;
+};
+```
+
+```python Python
+import os
+from dotenv import load_dotenv
+import requests
+
+load_dotenv()
+api_key = os.getenv('OSMOSIS_API_KEY')
+
+url = "https://osmosis.gulp.dev/delete_by_intent"
+headers = {
+    "Content-Type": "application/json",
+    "x-api-key": api_key
+}
+params = {
+    "tenant_id": api_key,
+    "intent": "process refund",
+    "similarity_threshold": 0.7
+}
+
+response = requests.post(url, headers=headers, params=params)
+data = response.json()
+```
+
+```go Go
+package main
+
+import (
+    "io/ioutil"
+    "net/http"
+    "net/url"
+    "os"
+)
+
+func deleteByIntent() ([]byte, error) {
+    apiKey := os.Getenv("OSMOSIS_API_KEY")
+    baseURL := "https://osmosis.gulp.dev/delete_by_intent"
+    
+    params := url.Values{}
+    params.Add("tenant_id", apiKey)
+    params.Add("intent", "process refund")
+    params.Add("similarity_threshold", "0.7")
+    
+    req, err := http.NewRequest("POST", baseURL+"?"+params.Encode(), nil)
+    if err != nil {
+        return nil, err
+    }
+
+    req.Header.Set("Content-Type", "application/json")
+    req.Header.Set("x-api-key", apiKey)
+
+    client := &http.Client{}
+    resp, err := client.Do(req)
+    if err != nil {
+        return nil, err
+    }
+    defer resp.Body.Close()
+
+    return ioutil.ReadAll(resp.Body)
+}
+```
+
+</CodeGroup>
+
+## Response
+
+### Success Response
+
+```typescript
+{
+  // Number of documents deleted
+  deleted_count: number,
+  
+  // Operation status message
+  status: string
+}
+```
+
+Example:
+
+```json
+{
+  "deleted_count": 5,
+  "status": "Successfully deleted matching documents"
+}
+```
+
+### Error Response
+
+```typescript
+{
+  // Array of validation errors
+  detail: Array<{
+    // Location of the error
+    loc: Array<string | number>,
+    // Error message
+    msg: string,
+    // Error type
+    type: string
+  }>
+}
+```
+
+Example:
+
+```json
+{
+  "detail": [
+    {
+      "loc": ["query", "tenant_id"],
+      "msg": "field required",
+      "type": "value_error.missing"
+    }
+  ]
+}
+```
+
+## Response Codes
+
+| Code | Description |
+|------|-------------|
+| 200 | Successful deletion |
+| 422 | Validation Error |

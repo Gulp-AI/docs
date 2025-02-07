@@ -1,6 +1,6 @@
 {
   "$schema": "https://mintlify.com/schema.json",
-  "name": "Gulp Planner",
+  "name": "Osmosis API",
   "logo": {
     "dark": "/logo/logo.png",
     "light": "/logo/logo.png"
@@ -16,48 +16,37 @@
     }
   },
   "topbarLinks": [
+    {
+      "name": "Contact Us",
+      "url": "mailto:founders@gulp.ai"
+    }
+  ],
+  "tabs": [
+    {
+      "name": "API Reference",
+      "url": "api-reference"
+    },
+    {
+      "name": "Examples",
+      "url": "examples"
+    }
   ],
   "navigation": [
     {
-      "group": "Overview",
-      "pages": ["introduction"]
-    },
-    {
-      "group": "Configuration",
+      "group": "Getting Started",
       "pages": [
-        "configuration/basic-structure",
-        "configuration/schema-validation",
-        "configuration/transformations",
-        "configuration/windowing",
-        "configuration/connectors",
-        "configuration/state-management",
-        "configuration/performance"
+        "introduction",
+        "quickstart/authentication"
       ]
     },
     {
-      "group": "Cloud Integration",
+      "group": "API Reference",
       "pages": [
-        "cloud-integration/overview",
-        "cloud-connectors/aws",
-        "cloud-connectors/gcp"
-      ]
-    },
-    {
-      "group": "Examples",
-      "pages": [
-        "examples/basic-streaming",
-        "examples/window-analytics",
-        "examples/complex-events"
-      ]
-    },
-    {
-      "group": "Operations",
-      "pages": [
-        "operations/index"
+        "api-reference/overview",
+        "api-reference/enhance-task",
+        "api-reference/store-knowledge",
+        "api-reference/delete-by-intent"
       ]
     }
-  ],
-  "footerSocials": {
-    "github": "https://github.com/yourusername/gulp-planner"
-  }
+  ]
 }
