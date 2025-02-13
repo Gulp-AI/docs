@@ -171,16 +171,18 @@ Example success response:
 
 ```json
 {
-  "response": "Based on the refund request for the damaged item, I recommend processing a full refund following standard support procedures for high-priority cases.",
+  "response": "Process refund request for damaged item, note that the item is damaged and the user has not provided a valid reason for the refund. Check the company return policy manual for section 1.2 on damaged items.",
   "metadata": {
-    "confidence_score": 0.95,
+    "confidence_score": 0.45,
     "agent_type": "support_agent"
   }
 }
 ```
 
 <Note>
-  The confidence score in the metadata is currently a simple computation based on our [Monte Carlo Tree Search](https://llm-mcts.github.io/) process. While it provides a general indication, it should not be treated as a definitive metric of response quality at this stage.
+  The confidence score in the metadata is currently a simple computation based on our [Monte Carlo Tree Search](https://llm-mcts.github.io/) process.
+  While it provides a general indication, it should not be treated as a definitive metric of response quality at this stage.
+  We only provide confidence score if it is below 0.7
 </Note>
 
 
