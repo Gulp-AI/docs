@@ -50,7 +50,7 @@ curl -X POST https://osmosis.gulp.dev/enhance_task \
   -H "Content-Type: application/json" \
   -H "x-api-key: your-api-key" \
   -d '{
-    "tenant_id": "webarena",
+    "tenant_id": "api_key",
     "input_text": "Process refund request for damaged item",
     "agent_type": "support_agent"
   }'
@@ -63,7 +63,7 @@ async function enhanceTask() {
   const apiKey = process.env.OSMOSIS_API_KEY;
   
   const payload = {
-    tenant_id: 'webarena',
+    tenant_id: 'api_key',
     input_text: 'Process refund request for damaged item',
     agent_type: 'support_agent'
   };
@@ -87,7 +87,7 @@ def enhance_task():
     api_key = os.getenv('OSMOSIS_API_KEY')
     
     payload = {
-        "tenant_id": "webarena",
+        "tenant_id": "api_key",
         "input_text": "Process refund request for damaged item",
         "agent_type": "support_agent"
     }
@@ -124,7 +124,7 @@ func enhanceTask() ([]byte, error) {
     apiKey := os.Getenv("OSMOSIS_API_KEY")
     
     payload := EnhanceTaskPayload{
-        TenantID:  "webarena",
+        TenantID:  "api_key",
         InputText: "Process refund request for damaged item",
         AgentType: "support_agent",
     }
@@ -223,7 +223,6 @@ Example error response:
 1. **Request Timing**
    - Call this endpoint before agent execution
    - Use it for both main tasks and sub-tasks
-   - Consider caching responses for similar queries
 
 2. **Input Text Formatting**
    - Keep input text clear and specific
