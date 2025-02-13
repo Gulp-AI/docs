@@ -5,6 +5,9 @@ description: 'API reference for the enhance task endpoint'
 
 The `/enhance_task` endpoint enriches tasks with relevant knowledge and context to improve agent responses.
 
+This endpoint should be used whenever your agent is done performing a task.
+If your agent spawns sub sub agents, each sub agent should independently sum up its own results and call this endpoint.
+
 ## Endpoint
 
 ```bash
@@ -22,19 +25,15 @@ POST https://osmosis.gulp.dev/enhance_task
 
 ```typescript
 {
-  // Required: Unique identifier for the tenant/user
+  // Required: Unique identifier for the tenant/user, currently, that would be your API key
   tenant_id: string,
   
-  // Required: The agent's input/query
+  // Required: The agent's input/query.
+  // This can be a user prompt, or the task given to a sub agent.
   input_text: string,
   
-  // Optional: Additional context about the agent's current state
-  context?: {
-    // Any string key-value pairs
-    [key: string]: string
-  },
-  
-  // Optional: Type of agent making the request
+  // Optional: Type of agent making the request, i.e. browser, orchestrator, etc. 
+  // This is best used in multi-agent environments.
   agent_type?: string
 }
 ```
@@ -45,7 +44,6 @@ POST https://osmosis.gulp.dev/enhance_task
 |-----------|------|----------|---------|-------------|
 | `tenant_id` | string | Yes | - | Unique identifier for the tenant/user |
 | `input_text` | string | Yes | - | The agent's input/query |
-| `context` | object | No | {} | Additional context about the agent's current state as key-value string pairs |
 | `agent_type` | string | No | null | Type of agent making the request |
 
 ## Example Requests
@@ -59,12 +57,6 @@ curl -X POST https://osmosis.gulp.dev/enhance_task \
   -d '{
     "tenant_id": "webarena",
     "input_text": "Process refund request for damaged item",
-    "context": {
-      "user_type": "customer_service",
-      "department": "support",
-      "category": "refunds",
-      "priority": "high"
-    },
     "agent_type": "support_agent"
   }'
 ```
@@ -77,12 +69,6 @@ const enhanceTask = async () => {
   const response = await axios.post('https://osmosis.gulp.dev/enhance_task', {
     tenant_id: 'webarena',
     input_text: 'Process refund request for damaged item',
-    context: {
-      user_type: 'customer_service',
-      department: 'support',
-      category: 'refunds',
-      priority: 'high'
-    },
     agent_type: 'support_agent'
   }, {
     headers: {
@@ -105,12 +91,6 @@ fetch('https://osmosis.gulp.dev/enhance_task', {
   body: JSON.stringify({
     tenant_id: 'webarena',
     input_text: 'Process refund request for damaged item',
-    context: {
-      user_type: 'customer_service',
-      department: 'support',
-      category: 'refunds',
-      priority: 'high'
-    },
     agent_type: 'support_agent'
   })
 })
@@ -129,12 +109,6 @@ headers = {
 payload = {
     "tenant_id": "webarena",
     "input_text": "Process refund request for damaged item",
-    "context": {
-        "user_type": "customer_service",
-        "department": "support",
-        "category": "refunds",
-        "priority": "high"
-    },
     "agent_type": "support_agent"
 }
 
@@ -156,12 +130,6 @@ func enhanceTask() ([]byte, error) {
     payload := map[string]interface{}{
         "tenant_id":  "webarena",
         "input_text": "Process refund request for damaged item",
-        "context": map[string]string{
-            "user_type":  "customer_service",
-            "department": "support",
-            "category":   "refunds",
-            "priority":   "high",
-        },
         "agent_type": "support_agent",
     }
 
@@ -211,10 +179,10 @@ Example:
 {
   "response": "Based on the refund request for the damaged item, I recommend processing a full refund following standard support procedures for high-priority cases.",
   "metadata": {
-    "process_time_ms": 150,
+    // We use techniques like Monte Carlo Tree Search (MCTS) when gathering recommendations.
+    // This confidence score is a simple calculation of the agreement between branches.
     "confidence_score": 0.95,
     "agent_type": "support_agent",
-    "enhancement_type": "policy_based"
   }
 }
 ```
