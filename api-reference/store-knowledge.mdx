@@ -29,11 +29,11 @@ POST https://osmosis.gulp.dev/store_knowledge
 
 ### Root Level Parameters
 
-<ParamField body="tenant_id" type="string" required>
+<ParamField body="tenant_id" type="string" required initialValue="your-api-key">
   Unique identifier for the tenant/user
 </ParamField>
 
-<ParamField body="query" type="string" required>
+<ParamField body="query" type="string" required initialValue="Find and purchase a red Nike running shoe in size 10">
   The original user query or instruction that initiated the interaction
 </ParamField>
 
@@ -41,15 +41,15 @@ POST https://osmosis.gulp.dev/store_knowledge
   Array of interaction turns between the agent and the environment/user
 </ParamField>
 
-<ParamField body="success" type="boolean">
+<ParamField body="success" type="boolean" initialValue={true}>
   Indicates whether the agent completed its task successfully
 </ParamField>
 
-<ParamField body="agent_type" type="string">
+<ParamField body="agent_type" type="string" initialValue="browser">
   Specifies the type of agent (e.g., 'browser', 'voice')
 </ParamField>
 
-<ParamField body="timestamp" type="string" required>
+<ParamField body="timestamp" type="string" required initialValue="2024-03-14T10:30:00Z">
   When the interaction occurred (ISO format)
 </ParamField>
 
@@ -61,23 +61,23 @@ POST https://osmosis.gulp.dev/store_knowledge
 
 Each turn in the `turns` array represents a single interaction step and contains the following fields:
 
-<ParamField body="turn" type="number" required>
+<ParamField body="turn" type="number" required initialValue={1}>
   The turn number in the interaction sequence. Must start at 1 and be sequential without gaps.
   For single-turn agents, this should be 1.
 </ParamField>
 
-<ParamField body="inputs" type="string" required>
+<ParamField body="inputs" type="string" required initialValue="On shopping website homepage. Need to search for red Nike running shoes.">
   The flattened input the agent sees at this turn. Should include:
   - Available tools and options
   - Current observations
   - Each tool/option should be listed on a new line
 </ParamField>
 
-<ParamField body="decision" type="string" required>
+<ParamField body="decision" type="string" required initialValue='{"action_type": "click", "element_name": "search_bar", "text": ["Nike red running shoes"], "element_role": "searchbox", "coords": [120, 35], "url": "https://shop.example.com"}'>
   The output or action taken by the agent during this turn
 </ParamField>
 
-<ParamField body="memory" type="string">
+<ParamField body="memory" type="string" initialValue="User wants red Nike running shoes. Starting search from homepage.">
   What the agent remembers from this turn, such as:
   - Values returned from a RAG store
   - User intent understanding

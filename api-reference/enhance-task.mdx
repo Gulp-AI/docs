@@ -29,15 +29,15 @@ POST https://osmosis.gulp.dev/enhance_task
 
 ### Root Level Parameters
 
-<ParamField body="tenant_id" type="string" required>
+<ParamField body="tenant_id" type="string" required initialValue="your-api-key">
   Unique identifier for the tenant/user. Currently, this would be your API key.
 </ParamField>
 
-<ParamField body="input_text" type="string" required>
+<ParamField body="input_text" type="string" required initialValue="Process refund request for damaged item">
   The agent's input/query. This can be a user prompt, or the task given to a sub agent.
 </ParamField>
 
-<ParamField body="agent_type" type="string">
+<ParamField body="agent_type" type="string" initialValue="support_agent">
   Type of agent making the request (e.g., 'browser', 'orchestrator'). Best used in multi-agent environments.
 </ParamField>
 

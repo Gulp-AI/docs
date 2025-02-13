@@ -24,15 +24,15 @@ POST https://osmosis.gulp.dev/delete_by_intent
 
 ## Query Parameters
 
-<ParamField query="tenant_id" type="string" required>
+<ParamField query="tenant_id" type="string" required initialValue="your-api-key">
   The tenant identifier
 </ParamField>
 
-<ParamField query="intent" type="string" required>
+<ParamField query="intent" type="string" required initialValue="process refund">
   The intent to match against
 </ParamField>
 
-<ParamField query="similarity_threshold" type="number" default="0.5">
+<ParamField query="similarity_threshold" type="number" default="0.5" initialValue={0.7}>
   Optional similarity threshold for matching documents
 </ParamField>
 

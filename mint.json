@@ -45,7 +45,10 @@
         "api-reference/overview",
         "api-reference/enhance-task",
         "api-reference/store-knowledge",
-        "api-reference/delete-by-intent"
+        "api-reference/delete-by-intent",
+        "api-reference/delete-by-intent",
+        "api-reference/enhance-task",
+        "api-reference/store-knowledge"
       ]
     }
   ]
