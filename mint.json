@@ -6,6 +6,17 @@
     "light": "/logo/logo.png"
   },
   "favicon": "/favicon.png",
+  "openapi": "/openapi.json",
+  "api": {
+    "baseUrl": "https://osmosis.gulp.dev",
+    "playground": {
+      "mode": "show"
+    },
+    "auth": {
+      "method": "key",
+      "name": "x-api-key"
+    }
+  },
   "colors": {
     "primary": "#707FDD",
     "light": "#8892E3",
@@ -23,7 +34,7 @@
   ],
   "tabs": [
     {
-      "name": "API Reference",
+      "name": "Documentation",
       "url": "api-reference"
     },
     {
