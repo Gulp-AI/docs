@@ -25,10 +25,10 @@ description: 'Learn how to authenticate with the Osmosis API'
 
 <CodeGroup>
   <Code title="HTTP Headers">
-  ```bash
-  'x-api-key: your_api_key_here'
-  'Content-Type: application/json'
-  ```
+```bash
+'x-api-key: your_api_key_here'
+'Content-Type: application/json'
+```
   </Code>
 </CodeGroup>
 
@@ -36,15 +36,15 @@ Include your API key in all requests to the Osmosis API using the `x-api-key` he
 
 <CodeGroup>
   <Code title="cURL">
-  ```bash
-  curl --location 'https://osmosis.gulp.dev/enhance_task' \
-  --header 'x-api-key: your_api_key_here' \
-  --header 'Content-Type: application/json' \
-  --data '{
-    "tenant_id": "your_api_key_here",
-    "input_text": "Your query here"
-  }'
-  ```
+```bash
+curl --location 'https://osmosis.gulp.dev/enhance_task' \
+--header 'x-api-key: your_api_key_here' \
+--header 'Content-Type: application/json' \
+--data '{
+  "tenant_id": "your_api_key_here",
+  "input_text": "Your query here"
+}'
+```
   </Code>
 </CodeGroup>
 
@@ -57,15 +57,93 @@ Include your API key in all requests to the Osmosis API using the `x-api-key` he
 Example request body structure:
 
 <CodeGroup>
-  <Code title="JSON">
-  ```json
-  {
-    "tenant_id": "your_api_key_here",
-    "input_text": "Process this task",
-    "agent_type": "support_agent"
-  }
-  ```
-  </Code>
+
+```bash cURL
+# Basic authentication example
+curl -X POST https://osmosis.gulp.dev/any_endpoint \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: your-api-key" \
+  -d '{
+    "tenant_id": "your-api-key"
+  }'
+```
+
+```typescript TypeScript
+// Basic authentication example
+import axios from 'axios';
+
+async function makeAuthenticatedRequest() {
+  const apiKey = process.env.OSMOSIS_API_KEY;
+  
+  const response = await axios.post('https://osmosis.gulp.dev/any_endpoint', {
+    tenant_id: apiKey
+  }, {
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey
+    }
+  });
+  
+  return response.data;
+}
+```
+
+```python Python
+# Basic authentication example
+import os
+import requests
+
+def make_authenticated_request():
+    api_key = os.getenv('OSMOSIS_API_KEY')
+    
+    response = requests.post(
+        "https://osmosis.gulp.dev/any_endpoint",
+        json={"tenant_id": api_key},
+        headers={
+            "Content-Type": "application/json",
+            "x-api-key": api_key
+        }
+    )
+    
+    return response.json()
+```
+
+```go Go
+// Basic authentication example
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "net/http"
+    "os"
+)
+
+func makeAuthenticatedRequest() (*http.Response, error) {
+    apiKey := os.Getenv("OSMOSIS_API_KEY")
+    
+    payload := map[string]string{
+        "tenant_id": apiKey,
+    }
+
+    jsonData, err := json.Marshal(payload)
+    if err != nil {
+        return nil, err
+    }
+
+    req, err := http.NewRequest("POST", "https://osmosis.gulp.dev/any_endpoint", bytes.NewBuffer(jsonData))
+    if err != nil {
+        return nil, err
+    }
+
+    req.Header.Set("Content-Type", "application/json")
+    req.Header.Set("x-api-key", apiKey)
+
+    client := &http.Client{}
+    return client.Do(req)
+}
+```
+
 </CodeGroup>
 
 ## Error Handling
