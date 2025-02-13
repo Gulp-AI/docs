@@ -5,8 +5,8 @@ description: 'API reference for the enhance task endpoint'
 
 The `/enhance_task` endpoint enriches tasks with relevant knowledge and context to improve agent responses.
 
-This endpoint should be used whenever your agent is done performing a task.
-If your agent spawns sub sub agents, each sub agent should independently sum up its own results and call this endpoint.
+This endpoint should be used whenever a user is prompting an agent.
+If your agent spawns sub sub agents, each sub task should also call this endpoint.
 
 ## Endpoint
 
