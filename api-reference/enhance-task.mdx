@@ -8,43 +8,38 @@ The `/enhance_task` endpoint enriches tasks with relevant knowledge and context 
 This endpoint should be used whenever a user is prompting an agent.
 If your agent spawns sub sub agents, each sub task should also call this endpoint.
 
-## Endpoint
+## Base URL
 
 ```bash
 POST https://osmosis.gulp.dev/enhance_task
 ```
 
-## Headers
+## Authentication
 
-| Header | Value |
-|--------|-------|
-| `Content-Type` | `application/json` |
-| `x-api-key` | Your API key |
+<RequestHeader>
+  <HeaderParameter name="Content-Type" required type="string">
+    application/json
+  </HeaderParameter>
+  <HeaderParameter name="x-api-key" required type="string">
+    Your API key
+  </HeaderParameter>
+</RequestHeader>
 
 ## Request Body
 
-```typescript
-{
-  // Required: Unique identifier for the tenant/user, currently, that would be your API key
-  tenant_id: string,
-  
-  // Required: The agent's input/query.
-  // This can be a user prompt, or the task given to a sub agent.
-  input_text: string,
-  
-  // Optional: Type of agent making the request, i.e. browser, orchestrator, etc. 
-  // This is best used in multi-agent environments.
-  agent_type?: string
-}
-```
+### Root Level Parameters
 
-### Parameters
+<ParamField body="tenant_id" type="string" required>
+  Unique identifier for the tenant/user. Currently, this would be your API key.
+</ParamField>
 
-| Parameter | Type | Required | Default | Description |
-|-----------|------|----------|---------|-------------|
-| `tenant_id` | string | Yes | - | Unique identifier for the tenant/user |
-| `input_text` | string | Yes | - | The agent's input/query |
-| `agent_type` | string | No | null | Type of agent making the request |
+<ParamField body="input_text" type="string" required>
+  The agent's input/query. This can be a user prompt, or the task given to a sub agent.
+</ParamField>
+
+<ParamField body="agent_type" type="string">
+  Type of agent making the request (e.g., 'browser', 'orchestrator'). Best used in multi-agent environments.
+</ParamField>
 
 ## Example Requests
 
@@ -62,58 +57,51 @@ curl -X POST https://osmosis.gulp.dev/enhance_task \
 ```
 
 ```typescript TypeScript
-// Example using axios
-const enhanceTask = async () => {
-  const axios = require('axios');
+import axios from 'axios';
+
+async function enhanceTask() {
+  const apiKey = process.env.OSMOSIS_API_KEY;
   
-  const response = await axios.post('https://osmosis.gulp.dev/enhance_task', {
+  const payload = {
     tenant_id: 'webarena',
     input_text: 'Process refund request for damaged item',
     agent_type: 'support_agent'
-  }, {
+  };
+
+  const response = await axios.post('https://osmosis.gulp.dev/enhance_task', payload, {
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': 'your-api-key'
+      'x-api-key': apiKey
     }
   });
   
   return response.data;
-};
-```
-
-```javascript JavaScript
-fetch('https://osmosis.gulp.dev/enhance_task', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'x-api-key': 'your-api-key'
-  },
-  body: JSON.stringify({
-    tenant_id: 'webarena',
-    input_text: 'Process refund request for damaged item',
-    agent_type: 'support_agent'
-  })
-})
-.then(response => response.json())
-.then(data => console.log(data));
+}
 ```
 
 ```python Python
+import os
 import requests
 
-url = "https://osmosis.gulp.dev/enhance_task"
-headers = {
-    "Content-Type": "application/json",
-    "x-api-key": "your-api-key"
-}
-payload = {
-    "tenant_id": "webarena",
-    "input_text": "Process refund request for damaged item",
-    "agent_type": "support_agent"
-}
-
-response = requests.post(url, json=payload, headers=headers)
-data = response.json()
+def enhance_task():
+    api_key = os.getenv('OSMOSIS_API_KEY')
+    
+    payload = {
+        "tenant_id": "webarena",
+        "input_text": "Process refund request for damaged item",
+        "agent_type": "support_agent"
+    }
+    
+    response = requests.post(
+        "https://osmosis.gulp.dev/enhance_task",
+        json=payload,
+        headers={
+            "Content-Type": "application/json",
+            "x-api-key": api_key
+        }
+    )
+    
+    return response.json()
 ```
 
 ```go Go
@@ -122,15 +110,23 @@ package main
 import (
     "bytes"
     "encoding/json"
-    "io/ioutil"
     "net/http"
+    "os"
 )
 
+type EnhanceTaskPayload struct {
+    TenantID  string `json:"tenant_id"`
+    InputText string `json:"input_text"`
+    AgentType string `json:"agent_type,omitempty"`
+}
+
 func enhanceTask() ([]byte, error) {
-    payload := map[string]interface{}{
-        "tenant_id":  "webarena",
-        "input_text": "Process refund request for damaged item",
-        "agent_type": "support_agent",
+    apiKey := os.Getenv("OSMOSIS_API_KEY")
+    
+    payload := EnhanceTaskPayload{
+        TenantID:  "webarena",
+        InputText: "Process refund request for damaged item",
+        AgentType: "support_agent",
     }
 
     jsonData, err := json.Marshal(payload)
@@ -144,7 +140,7 @@ func enhanceTask() ([]byte, error) {
     }
 
     req.Header.Set("Content-Type", "application/json")
-    req.Header.Set("x-api-key", "your-api-key")
+    req.Header.Set("x-api-key", apiKey)
 
     client := &http.Client{}
     resp, err := client.Do(req)
@@ -153,7 +149,7 @@ func enhanceTask() ([]byte, error) {
     }
     defer resp.Body.Close()
 
-    return ioutil.ReadAll(resp.Body)
+    return json.Marshal(resp)
 }
 ```
 
@@ -163,47 +159,33 @@ func enhanceTask() ([]byte, error) {
 
 ### Success Response
 
-```typescript
-{
-  // The processed response
-  response: string,
-  
-  // Optional metadata about the enhancement
-  metadata?: Record<string, any>
-}
-```
+<ResponseField name="response" type="string" required>
+  The processed response with enhanced context and recommendations
+</ResponseField>
 
-Example:
+<ResponseField name="metadata" type="object">
+  Additional metadata about the enhancement process and results
+</ResponseField>
+
+Example success response:
 
 ```json
 {
   "response": "Based on the refund request for the damaged item, I recommend processing a full refund following standard support procedures for high-priority cases.",
   "metadata": {
-    // We use techniques like Monte Carlo Tree Search (MCTS) when gathering recommendations.
-    // This confidence score is a simple calculation of the agreement between branches.
     "confidence_score": 0.95,
-    "agent_type": "support_agent",
+    "agent_type": "support_agent"
   }
 }
 ```
 
 ### Error Response
 
-```typescript
-{
-  // Error details array
-  detail: Array<{
-    // Location of the error
-    loc: Array<string | number>,
-    // Error message
-    msg: string,
-    // Error type
-    type: string
-  }>
-}
-```
+<ResponseField name="detail" type="array" required>
+  Array of error details
+</ResponseField>
 
-Example:
+Example error response:
 
 ```json
 {
@@ -217,12 +199,15 @@ Example:
 }
 ```
 
-## Response Codes
+## Status Codes
 
-| Code | Description |
-|------|-------------|
-| 200 | Enhancement successful |
-| 422 | Validation error |
+<ResponseStatus code={200} status="OK">
+  Task enhancement completed successfully
+</ResponseStatus>
+
+<ResponseStatus code={422} status="Unprocessable Entity">
+  Invalid request (validation error)
+</ResponseStatus>
 
 ## Error Codes
 
@@ -232,3 +217,25 @@ Example:
 | `value_error.json` | Invalid JSON in request body |
 | `type_error` | Incorrect type for a field |
 | `value_error` | Invalid value for a field |
+
+## Best Practices
+
+1. **Request Timing**
+   - Call this endpoint before agent execution
+   - Use it for both main tasks and sub-tasks
+   - Consider caching responses for similar queries
+
+2. **Input Text Formatting**
+   - Keep input text clear and specific
+   - Include relevant context
+   - Use consistent formatting across requests
+
+3. **Agent Type Usage**
+   - Always specify agent_type when using multiple agents
+   - Use consistent agent type names
+   - Document agent types in your system
+
+4. **Error Handling**
+   - Implement proper retry logic
+   - Cache successful responses
+   - Handle validation errors gracefully
