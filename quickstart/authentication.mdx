@@ -3,68 +3,89 @@ title: 'Authentication'
 description: 'Learn how to authenticate with the Osmosis API'
 ---
 
-To use the Osmosis API, you'll need an API key. This key serves two purposes:
-1. Authentication for API requests
-2. Tenant ID for data isolation
+<Note>
+  All API requests to Osmosis require authentication. Your API key serves as both your authentication token and tenant identifier.
+</Note>
 
 ## Getting an API Key
 
-1. For now, please contact us at [founders@gulp.ai](mailto:founders@gulp.ai) to get an API key.
+<Steps>
+  <Step title="Request Access">
+    Contact us at [founders@gulp.ai](mailto:founders@gulp.ai) to request API access.
+  </Step>
+  <Step title="Receive Credentials">
+    Once approved, you'll receive your unique API key via email.
+  </Step>
+  <Step title="Test Access">
+    Verify your API key works by making a test call to any endpoint.
+  </Step>
+</Steps>
 
 ## Using Your API Key
 
+<CodeGroup>
+  <Code title="HTTP Headers">
+  ```bash
+  'x-api-key: your_api_key_here'
+  'Content-Type: application/json'
+  ```
+  </Code>
+</CodeGroup>
+
 Include your API key in all requests to the Osmosis API using the `x-api-key` header:
 
-```bash
-curl --location 'https://osmosis.gulp.dev/enhance_task' \
---header 'x-api-key: your_api_key_here' \
---header 'Content-Type: application/json' \
---data '{
-  "tenant_id": "your_api_key_here",
-  "input_text": "Your query here"
-}'
-```
+<CodeGroup>
+  <Code title="cURL">
+  ```bash
+  curl --location 'https://osmosis.gulp.dev/enhance_task' \
+  --header 'x-api-key: your_api_key_here' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "tenant_id": "your_api_key_here",
+    "input_text": "Your query here"
+  }'
+  ```
+  </Code>
+</CodeGroup>
 
 ## Tenant ID
 
-The `tenant_id` field in request bodies should match your API key. This ensures your data is isolated and secure:
+<Warning>
+  The `tenant_id` field in request bodies must match your API key. This ensures proper data isolation and security.
+</Warning>
 
-```json
-{
-  "tenant_id": "your_api_key_here",
-  // ... other fields
-}
-```
-
-## Security Best Practices
-
-1. **Keep it Secret** - Never expose your API key in client-side code or public repositories
-2. **Use Environment Variables** - Store your API key in environment variables:
+Example request body structure:
 
 <CodeGroup>
-
-```typescript TypeScript
-import dotenv from 'dotenv';
-
-dotenv.config();
-const apiKey = process.env.OSMOSIS_API_KEY;
-```
-
-```javascript JavaScript
-require('dotenv').config();
-const apiKey = process.env.OSMOSIS_API_KEY;
-```
-
-```python Python
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
-api_key = os.getenv('OSMOSIS_API_KEY')
-```
-
+  <Code title="JSON">
+  ```json
+  {
+    "tenant_id": "your_api_key_here",
+    "input_text": "Process this task",
+    "agent_type": "support_agent"
+  }
+  ```
+  </Code>
 </CodeGroup>
+
+## Error Handling
+
+<ResponseField name="401 Unauthorized" type="object">
+  ```json
+  {
+    "error": "invalid_api_key",
+    "message": "The provided API key is invalid or has been revoked"
+  }
+  ```
+</ResponseField>
 
 ## Next Steps
 
-- [Read the API Reference](/api-reference/overview)
+<CardGroup cols={2}>
+  <Card title="API Reference" icon="book" href="/api-reference/overview">
+    Explore the complete API documentation
+  </Card>
+  <Card title="Support" icon="headset" href="mailto:founders@gulp.ai">
+    Contact us if you need help with authentication
+  </Card>
+</CardGroup>
