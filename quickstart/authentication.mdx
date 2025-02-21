@@ -51,7 +51,7 @@ curl --location 'https://osmosis.gulp.dev/enhance_task' \
 ## Tenant ID
 
 <Warning>
-  The `tenant_id` field in request bodies must match your API key. This ensures proper data isolation and security.
+  The `tenant_id` field in request bodies corresponds to a unique recommendation collection, enabling sub-tenancy isolation for different agentic workflows. This ensures proper data isolation and security between different agent instances and use cases.
 </Warning>
 
 Example request body structure:

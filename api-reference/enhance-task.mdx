@@ -1,6 +1,7 @@
 ---
 title: 'Enhance Task'
 description: 'API reference for the enhance task endpoint'
+openapi: "POST /enhance_task"
 ---
 
 The `/enhance_task` endpoint enriches tasks with relevant knowledge and context to improve agent responses.
@@ -30,7 +31,7 @@ POST https://osmosis.gulp.dev/enhance_task
 ### Root Level Parameters
 
 <ParamField body="tenant_id" type="string" required>
-  Unique identifier for the tenant/user. Currently, this would be your API key.
+  Unique identifier that corresponds to a dedicated recommendation collection, enabling sub-tenancy isolation for different agentic workflows.
 </ParamField>
 
 <ParamField body="input_text" type="string" required>
