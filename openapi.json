@@ -250,7 +250,7 @@
                     "tenant_id": {
                         "type": "string",
                         "title": "Tenant Id",
-                        "description": "Unique identifier for the tenant/user - use your API key here"
+                        "description": "Unique identifier that corresponds to a dedicated recommendation collection, enabling sub-tenancy isolation for different agentic workflows"
                     },
                     "input_text": {
                         "type": "string",

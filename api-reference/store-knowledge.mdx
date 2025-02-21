@@ -30,11 +30,11 @@ POST https://osmosis.gulp.dev/store_knowledge
 
 ### Root Level Parameters
 
-<ParamField body="tenant_id" type="string" required>
-  Unique identifier for the tenant/user
+<ParamField body="tenant_id" type="string" required initialValue="your-api-key">
+  Unique identifier that corresponds to a dedicated recommendation collection, enabling sub-tenancy isolation for different agentic workflows
 </ParamField>
 
-<ParamField body="query" type="string" required>
+<ParamField body="query" type="string" required initialValue="Process refund request for damaged item">
   The original user query or instruction that initiated the interaction
 </ParamField>
 
