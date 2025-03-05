@@ -234,6 +234,50 @@
                     }
                 }
             }
+        },
+        "/knowledge_status/{job_id}": {
+            "get": {
+                "tags": [
+                    "knowledge"
+                ],
+                "summary": "Knowledge Status",
+                "description": "Get the status of a knowledge upload job.\n\nArgs:\n    job_id: The job ID for the knowledge upload, passed as path parameter",
+                "operationId": "knowledge_status_knowledge_status__job_id__get",
+                "parameters": [
+                    {
+                        "name": "job_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Job Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "title": "Response Knowledge Status Knowledge Status  Job Id  Get"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "components": {
