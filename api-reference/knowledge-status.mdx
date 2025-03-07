@@ -105,7 +105,8 @@ func getKnowledgeStatus(jobID string) ([]byte, error) {
 ### Success Response
 
 <ResponseField name="status" type="string" required>
-  Current status of the knowledge upload job
+  Current status of the knowledge upload job, can be:
+  `completed`, `processing` or `failed`
 </ResponseField>
 
 <ResponseField name="message" type="string">
